@@ -52,12 +52,23 @@ def constraints(ww, t, ein, gamma, l0, alpha_1, alpha_2):
 
 def function_J(lambdas, gamma, lio, ww, l0):
     [error_input, error_output, Wound_symmetry, needle_depth, out_angle, in_angle]= compute_suture_parameters(gamma, s0, l0, ww,dc,lio)
-    final_values = [error_input, error_output, Wound_symmetry, needle_depth, out_angle, in_angle]
-    ideal_values = [0, 0, 0, lio/2, np.pi/2, np.pi/2]
-    delt = [final_values[i] - ideal_values[i] for i in range(len(final_values))]
+    ideal_values = np.array([0, 0, 0, lio/2, np.pi/2, np.pi/2],dtype=float)
+
+    final_values= np.array([error_input, error_output, Wound_symmetry, needle_depth, out_angle, in_angle],dtype=float)
+
+    delt=np.array(len(final_values))
+    for i in range(len(final_values)):
+        delt[i] =abs( [final_values[i] - ideal_values[i]] )
     J_norm = 0
-    dmax = np.max(delt)
-    dmin = np.min(delt)
+    #dmax = np.max(delt)
+    #dmin = np.min(delt)
+    dmax=0
+    dmin=100000.0
+    for i in range(len(delt)):
+        if delt[i]>=dmax:
+            dmax=delt[i]
+        if delt[i]<=dmin:
+            dmin=delt[i]
     for i in range(len(final_values)):
         J_norm += (lambdas[i] * (delt[i] - dmin) / (dmax - dmin)) / lambdas[i]
     return J_norm
