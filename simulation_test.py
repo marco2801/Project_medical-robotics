@@ -24,17 +24,17 @@ def create_vessel(radius, length, position, orientation):
     return vessel_id
 
 # Function to generate points along the edges of the vessels
-def get_stiches(center, radius, num_stiches, offset=0.005):
+def get_stiches(center, radius, num_stiches, offset=0.0005):
     points = []
     for i in range(num_stiches):
         angle = 2 * np.pi * i / num_stiches
-        x_position = center[0] + radius * np.cos(angle) + offset
+        x_position = center[0]
         y_position = center[1] + radius * np.sin(angle) + offset  # Add an offset to see the points
-        z_position = center[2]
+        z_position = center[2]+ radius * np.cos(angle) + offset
         points.append([x_position, y_position, z_position])
     points = np.array(points)
     colors = np.array([[0, 1, 0]] * num_stiches)
-    p.addUserDebugPoints(points, pointColorsRGB=colors, pointSize=5)
+    p.addUserDebugPoints(points, pointColorsRGB=colors, pointSize=10)
     return points
 
 
