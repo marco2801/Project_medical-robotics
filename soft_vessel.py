@@ -34,7 +34,7 @@ def create_soft_vessel(file_path, scale, position, orientation):
                                     scale=scale, mass=1,springElasticStiffness=10,useSelfCollision=True)
     return soft_vessel_id
 
-# built of stitches
+# built of stitches we have to put them in the right position (next version)
 def get_stitches(center, radius, num_stitches, offset=0.0005):
     debug_items = []
     for i in range(num_stitches):
