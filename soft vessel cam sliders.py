@@ -1,10 +1,11 @@
-import time
+from time import sleep # aggiunta
 import pybullet as p
 import pybullet_data
 import numpy as np
 
 p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
+p.resetSimulation(p.RESET_USE_DEFORMABLE_WORLD) # aggiunta 
 p.setGravity(0, 0, -9.81)  # Set gravity to a realistic value
 
 plane_id = p.loadURDF("plane.urdf")
@@ -27,10 +28,10 @@ def create_bullet(radius, length, position, orientation):
     return bullet_id
 
 # Soft vessel creation
-def create_soft_vessel(file_path, scale, position, orientation):
-    soft_vessel_id = p.loadSoftBody(file_path, basePosition=position, baseOrientation=orientation,
-                                    scale=scale, mass=1, springElasticStiffness=1000, useSelfCollision=True,
-                                    collisionMargin=0.01)
+def create_soft_vessel(file_path,vtk_name, scale, position, orientation):
+    soft_vessel_id = p.loadSoftBody(file_path,simFileName=vtk_name, basePosition=position, baseOrientation=orientation,
+                                    scale=scale, mass=2, springElasticStiffness=10000, useSelfCollision=True,
+                                    collisionMargin=0.001)
     return soft_vessel_id
 
 # built of stitches we have to put them in the right position (next version)
@@ -47,23 +48,24 @@ def get_stitches(center, radius, num_stitches, offset=0.0005):
     return debug_items
 
 # load the soft vessel
-soft_body_file = "/Users/marco/DataspellProjects/Project_medical-robotics/artery__sf.obj"  # Make sure to have this file
+file_path = "artery__sf.obj"  # Make sure to have this file
+vtk_name = "artery_mesh"  # Make sure to have this file
 
 # positioning of the vessel
 scale_factor = 0.001
-position_vessel = [0, 0,  2*vessel_outer_radius ]  # positioned not on the floor
+position_vessel = [0, 0,  2*vessel_outer_radius ]  # positioned on the floor
 orientation_vessel = p.getQuaternionFromEuler([0, np.pi/2, 0])
 
 # creation of one vessel
-vessel1 = create_soft_vessel(soft_body_file, scale_factor, position_vessel, orientation_vessel)
+vessel1 = create_soft_vessel(file_path, vtk_name,scale_factor, position_vessel, orientation_vessel)
 
 # Slider for controlling the z position of the bullet
-#bullet_slider = p.addUserDebugParameter("Bullet Position Z", 2 * vessel_outer_radius, 0.1, 3 * vessel_outer_radius + 0.1)
+bullet_slider = p.addUserDebugParameter("Bullet Position Z", 0.5* vessel_outer_radius, 0.1, 3 * vessel_outer_radius + 0.1)
 
 # Initially create the bullet
-#bullet_position = [vessel_length/2, 0, p.readUserDebugParameter(bullet_slider)]
-#bullet_orientation = p.getQuaternionFromEuler([0, 0, 0])  # Vertical orientation
-#bullet_id = create_bullet(0.000001, vessel_length, bullet_position, bullet_orientation)
+bullet_position = [vessel_length/2, vessel_outer_radius/2, 3* vessel_outer_radius]
+bullet_orientation = p.getQuaternionFromEuler([0, 0, 0])  # Vertical orientation
+bullet_id = create_bullet(0.001, vessel_length, bullet_position, bullet_orientation)
 
 # Variables to track the suture points IDs
 debug_points_ids = []  # List for the suture points IDs
@@ -79,20 +81,20 @@ while True:
 
     # Read values from the sliders
     num_suture_points = int(round(p.readUserDebugParameter(suture_slider)))
-    #new_bullet_z = p.readUserDebugParameter(bullet_slider)
+    new_bullet_z = p.readUserDebugParameter(bullet_slider)
     yaw = p.readUserDebugParameter(camera_yaw)
     pitch = p.readUserDebugParameter(camera_pitch)
     p.resetDebugVisualizerCamera(cameraDistance=0.1, cameraYaw=yaw, cameraPitch=pitch,
                                  cameraTargetPosition=[0, 0,  vessel_outer_radius ])
 
     # Update the bullet's position if the slider has changed
-   # if new_bullet_z != bullet_position[2]:
+    if new_bullet_z != bullet_position[2]:
         # Remove the previous bullet
-       # p.removeBody(bullet_id)
+        p.removeBody(bullet_id)
 
         # Update position and recreate the bullet
-       # bullet_position = [vessel_length/2, vessel_outer_radius, new_bullet_z]
-       # bullet_id = create_bullet(0.0001, vessel_length, bullet_position, bullet_orientation)
+        bullet_position = [vessel_length/2, vessel_outer_radius/2, new_bullet_z]
+        bullet_id = create_bullet(0.001, vessel_length, bullet_position, bullet_orientation)
 
     # Generate new suture points if the number changes
     if num_suture_points != previous_suture_points:
@@ -109,4 +111,4 @@ while True:
     # Check for collisions and highlight interaction points
 
 
-    time.sleep(0.1)
+    sleep(0.1)
