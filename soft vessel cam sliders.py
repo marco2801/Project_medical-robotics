@@ -30,9 +30,13 @@ def create_bullet(radius, length, position, orientation):
 # Soft vessel creation
 def create_soft_vessel(file_path,vtk_name, scale, position, orientation):
     soft_vessel_id = p.loadSoftBody(file_path,simFileName=vtk_name, basePosition=position, baseOrientation=orientation,
-                                    scale=scale, mass=2, springElasticStiffness=10000, useSelfCollision=True,
-                                    collisionMargin=0.001)
+                                    scale=scale, mass=1, springElasticStiffness=100000, useSelfCollision=False,
+                                    collisionMargin=0.01)
+    
     return soft_vessel_id
+
+#lambda = Enu/(1+nu)/(1-2nu)
+#mu = E /2/(1+nu)
 
 # built of stitches we have to put them in the right position (next version)
 def get_stitches(center, radius, num_stitches, offset=0.0005):
@@ -48,8 +52,8 @@ def get_stitches(center, radius, num_stitches, offset=0.0005):
     return debug_items
 
 # load the soft vessel
-file_path = "artery__sf.obj"  # Make sure to have this file
-vtk_name = "artery_mesh"  # Make sure to have this file
+file_path = "artery1000.obj"  # Make sure to have this file
+vtk_name = "artery1000.vtk"  # Make sure to have this file
 
 # positioning of the vessel
 scale_factor = 0.001
