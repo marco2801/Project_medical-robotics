@@ -30,7 +30,7 @@ def create_bullet(radius, length, position, orientation):
 # Soft vessel creation
 def create_soft_vessel(file_path,vtk_name, scale, position, orientation):
     soft_vessel_id = p.loadSoftBody(file_path,simFileName=vtk_name, basePosition=position, baseOrientation=orientation,
-                                    scale=scale, mass=1, springElasticStiffness=100000, useSelfCollision=False,
+                                    scale=scale, mass=1, springElasticStiffness=100000, useSelfCollision=1,
                                     collisionMargin=0.01)
     
     return soft_vessel_id
@@ -57,7 +57,7 @@ vtk_name = "artery1000.vtk"  # Make sure to have this file
 
 # positioning of the vessel
 scale_factor = 0.001
-position_vessel = [0, 0,  2*vessel_outer_radius ]  # positioned on the floor
+position_vessel = [0, 0,  3*vessel_outer_radius ]  # positioned on the floor
 orientation_vessel = p.getQuaternionFromEuler([0, np.pi/2, 0])
 
 # creation of one vessel
