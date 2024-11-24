@@ -83,7 +83,7 @@ while p.isConnected():
              distance = p.readUserDebugParameter(camera_distance_slider)
              angle1+=rotation_speed * (1 / 240)
              needle_orientation=p.getQuaternionFromEuler([np.pi+angle1,current_angle,np.pi/2])
-             needle_center=[-(0.3/2+0.03),((vessel_outer_radius)+0.01)*np.sin(current_angle),((2*vessel_outer_radius)+0.01)*np.cos(current_angle)]
+             needle_center=[-(0.3/2+0.03),((vessel_outer_radius)+0.01)*np.sin(current_angle),((vessel_outer_radius)+0.01)*np.cos(current_angle)+(vessel_outer_radius)]
              p.resetBasePositionAndOrientation(needle_id, needle_center, needle_orientation)
              p.resetDebugVisualizerCamera(
              cameraDistance=distance,
