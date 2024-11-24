@@ -23,7 +23,7 @@ plane_id = p.loadURDF("plane.urdf")
 #%% Vaso
 vessel_outer_radius = 0.5
 thickness=0.01
-vessel1 = p.loadSoftBody("Arteria_piena.obj", simFileName="Arteria_piena.vtk", basePosition=[0, 0, 2*0.5], baseOrientation=p.getQuaternionFromEuler([0, np.pi/2, 0]),
+vessel1 = p.loadSoftBody("Arteria_piena.obj", simFileName="Arteria_piena.vtk", basePosition=[0,-vessel_outer_radius, 2*vessel_outer_radius], baseOrientation=p.getQuaternionFromEuler([0, np.pi/2, 0]),
                         scale=0.1, mass=4, useNeoHookean=1, NeoHookeanMu=5000, NeoHookeanLambda=1000, NeoHookeanDamping=0.01, useSelfCollision=1, frictionCoeff=0.5, collisionMargin=0.01)
 #vessel2=p.loadSoftBody("Arteria_piena.obj", simFileName="Arteria_piena.vtk", basePosition=[2, 0, 2*0.5], baseOrientation=p.getQuaternionFromEuler([0, np.pi/2, 0]),
                       # scale=0.1, mass=4, useNeoHookean=1, NeoHookeanMu=5000, NeoHookeanLambda=1000, NeoHookeanDamping=0.01, useSelfCollision=1, frictionCoeff=0.5, collisionMargin=0.01)
@@ -33,56 +33,74 @@ vessel1 = p.loadSoftBody("Arteria_piena.obj", simFileName="Arteria_piena.vtk", b
 # Parametri del semicerchio
 radius = 0.33  # Raggio del semicerchio in metri (33 mm)
 angle = 0  # Angolo iniziale
-angle_increment = 0.05  # Incremento angolare per la rotazione
 
 # Parametri dell'ago
 #needle_position = [0, vessel_outer_radius/2, (2*vessel_outer_radius)-thickness]# Posizione del centro fisso
-needle_position = [-0.2, vessel_outer_radius, (2*vessel_outer_radius)+0.01]  # Posizione iniziale
+needle_position =  [ -(0.3/2+0.03),0, (2*vessel_outer_radius)+0.01]  # Posizione iniziale
 needle_orientation = p.getQuaternionFromEuler([np.pi, 0, np.pi/2])  # Orientamento iniziale
 needle_id = create_needle_from_stl("ago_66mm.stl", needle_position, needle_orientation, scale=0.01)
 
 # Sliders per controllare la velocità di rotazione
-rotation_speed_slider = p.addUserDebugParameter("Rotation Speed",0, 6.0, 0.5)
+rotation_speed_slider = p.addUserDebugParameter("Rotation Speed",0, 10.0, 0.5)
 
 # Centro del semicerchio
-semicircle_center = [2, 2, 2*vessel_outer_radius]   #posizione telcamere
-needle_center=[-0.2, vessel_outer_radius, (2*vessel_outer_radius)+0.01]  # Posizione del centro fisso
+semicircle_center = [-1, 2, 2*vessel_outer_radius]   #posizione telcamere
+needle_center=[ -(0.3/2+0.03),0, (2*vessel_outer_radius)+0.01]  # Posizione del centro fisso
 
 # Aggiungi sliders per posizionare la telecamera esternamente
 camera_yaw_slider = p.addUserDebugParameter("Camera Yaw", 0, 360, 145)
 camera_pitch_slider = p.addUserDebugParameter("Camera Pitch", -180, 180, -5)
 camera_distance_slider = p.addUserDebugParameter("Camera Distance", 0.1, 10, 1)
 
-#   %% Ciclo di simulazione
+num_suture=12
+current_suture=1
+suture_angle=2*np.pi/num_suture
+angle=0
+
+
 while p.isConnected():
     # Simulazione
-    p.stepSimulation()
-
+         p.stepSimulation()
     # Ottieni valori dagli sliders
-    rotation_speed = p.readUserDebugParameter(rotation_speed_slider)
-    yaw = p.readUserDebugParameter(camera_yaw_slider)
-    pitch = p.readUserDebugParameter(camera_pitch_slider)
-    distance = p.readUserDebugParameter(camera_distance_slider)
-
-    # Aumenta l'angolo di rotazione
-    angle += rotation_speed * (1 / 240)  # Incremento angolare ad ogni frame
-
-
-    # Calcola il nuovo orientamento (punta tangenzialmente alla traiettoria)
-    needle_orientation = p.getQuaternionFromEuler([np.pi+angle, 0, np.pi/2])
-
-    # Aggiorna posizione e orientamento dell'ago
-    p.resetBasePositionAndOrientation(needle_id, needle_center, needle_orientation)
-
-
-    # Configura telecamera
-    p.resetDebugVisualizerCamera(
-        cameraDistance=distance,
-        cameraYaw=yaw,
-        cameraPitch=pitch,
-        cameraTargetPosition=semicircle_center
-    )
-
-    sleep(1/240)
-
-
+         rotation_speed = p.readUserDebugParameter(rotation_speed_slider)
+         yaw = p.readUserDebugParameter(camera_yaw_slider)
+         pitch = p.readUserDebugParameter(camera_pitch_slider)
+         distance = p.readUserDebugParameter(camera_distance_slider)
+         angle += rotation_speed * (1 / 240)
+         needle_center=[ -(0.3/2+0.03),0, (2*vessel_outer_radius)+0.01]
+         needle_orientation=p.getQuaternionFromEuler([np.pi+angle, 0, np.pi/2])
+         p.resetBasePositionAndOrientation(needle_id, needle_center, needle_orientation)
+         print(angle)
+         while angle>=(5/4)*np.pi and current_suture<=num_suture:
+            current_angle=current_suture*suture_angle
+            angle1=0
+            print(current_angle)
+            print(current_suture)
+            while angle1<(5/4)*np.pi and current_suture<=num_suture:
+             rotation_speed = p.readUserDebugParameter(rotation_speed_slider)
+             yaw = p.readUserDebugParameter(camera_yaw_slider)
+             pitch = p.readUserDebugParameter(camera_pitch_slider)
+             distance = p.readUserDebugParameter(camera_distance_slider)
+             angle1+=rotation_speed * (1 / 240)
+             needle_orientation=p.getQuaternionFromEuler([np.pi+angle1,current_angle,np.pi/2])
+             needle_center=[-(0.3/2+0.03),((vessel_outer_radius)+0.01)*np.sin(current_angle),((2*vessel_outer_radius)+0.01)*np.cos(current_angle)]
+             p.resetBasePositionAndOrientation(needle_id, needle_center, needle_orientation)
+             p.resetDebugVisualizerCamera(
+             cameraDistance=distance,
+             cameraYaw=yaw,
+             cameraPitch=pitch,
+             cameraTargetPosition=semicircle_center
+             )
+             sleep(1./240.)
+            current_suture+=1
+             
+         
+        # Configura telecamera
+         p.resetDebugVisualizerCamera(
+         cameraDistance=distance,
+         cameraYaw=yaw,
+         cameraPitch=pitch,
+         cameraTargetPosition=semicircle_center
+         )
+         
+         sleep(1./240.)
