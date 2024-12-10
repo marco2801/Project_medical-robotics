@@ -77,6 +77,7 @@ while p.isConnected():
             print(current_angle)
             print(current_suture)
             while angle1<(5/4)*np.pi and current_suture<=num_suture:
+             p.stepSimulation()
              rotation_speed = p.readUserDebugParameter(rotation_speed_slider)
              yaw = p.readUserDebugParameter(camera_yaw_slider)
              pitch = p.readUserDebugParameter(camera_pitch_slider)
