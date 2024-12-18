@@ -1,11 +1,18 @@
 
-
 #%%
 
 import pybullet as p
 import pybullet_data
 import numpy as np
 import time
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent  # Cartella dello script
+ASSETS_DIR = BASE_DIR / "assets"  # Cartella contenente i file
+# File di input
+STL_FILE = str(ASSETS_DIR / "ago_66mm.stl")  # Converti in stringa per PyBullet
+VESSEL_OBJ = str(ASSETS_DIR / "Arteria_piena.obj")
+VESSEL_VTK = str(ASSETS_DIR / "Arteria_piena.vtk")
 
 # Connessione a PyBullet
 p.connect(p.GUI)
@@ -38,7 +45,7 @@ needle_center=[0, 0, 2*vessel_outer_radius]  # Posizione del centro fisso
 # Parametri dell'ago
 needle_position = [0, 0, 2*vessel_outer_radius]  # Posizione iniziale
 needle_orientation = p.getQuaternionFromEuler([np.pi, 0, 0])  # Orientamento iniziale
-needle_id = create_needle_from_stl("/Users/marco/DataspellProjects/Project_medical-robotics/ago_66mm.stl", needle_position, needle_orientation, scale=0.01)
+needle_id = create_needle_from_stl(STL_FILE, needle_position, needle_orientation, scale=0.01)
 
 suture_finished=False
 distances = []  # Array per salvare le distanze tra i vasi
@@ -46,8 +53,8 @@ distances = []  # Array per salvare le distanze tra i vasi
 
 
 vessel1 = p.loadSoftBody(
-    "/Users/marco/DataspellProjects/Project_medical-robotics/Arteria_piena.obj",
-    simFileName="/Users/marco/DataspellProjects/Project_medical-robotics/Arteria_piena.vtk",
+    VESSEL_OBJ,
+    simFileName=VESSEL_VTK,
     basePosition=[-vessel_outer_radius, -0.025, 0],  # Centro del vaso allineato sull'asse Z
     baseOrientation=p.getQuaternionFromEuler([np.pi/2, 0, 0]),
     scale=0.1,
@@ -61,7 +68,7 @@ vessel1 = p.loadSoftBody(
     collisionMargin=0.01
 )
 
-vessel2=p.loadSoftBody("/Users/marco/DataspellProjects/Project_medical-robotics/Arteria_piena.obj", simFileName="/Users/marco/DataspellProjects/Project_medical-robotics/Arteria_piena.vtk", basePosition=[-vessel_outer_radius, 2*vessel_length+0.025, 0], baseOrientation=p.getQuaternionFromEuler([ np.pi/2,0, 0]),
+vessel2=p.loadSoftBody(VESSEL_OBJ, simFileName=VESSEL_VTK, basePosition=[-vessel_outer_radius, 2*vessel_length+0.025, 0], baseOrientation=p.getQuaternionFromEuler([ np.pi/2,0, 0]),
                        scale=0.1, mass=4, useNeoHookean=1, NeoHookeanMu=5000, NeoHookeanLambda=1000, NeoHookeanDamping=0.01, useSelfCollision=1, frictionCoeff=0.5, collisionMargin=0.01)
 
 # Creazione di una marker per seguire determinati punti della mesh per vessel1 e vessel2
@@ -81,7 +88,7 @@ marker_body_2 = p.createMultiBody( #vado a seguire vessel2
 
 # Parametri del nodo da seguire
 target_node_index_1= 244  # Nodo specifico del soft body 1 da seguire 138 prima sutura
-target_node_index_2= 1606  # Nodo specifico del soft body 2 da seguire 139 prima sutura
+target_node_index_2= 245  # Nodo specifico del soft body 2 da seguire 139 prima sutura
 
 # Slider per controllare velocità di rotazione e configurazione della telecamera
 rotation_speed_slider = p.addUserDebugParameter("Rotation Speed", -5.0, 10.0, 0.5)
@@ -107,12 +114,19 @@ while p.isConnected():
     rotation_speed = p.readUserDebugParameter(rotation_speed_slider)
     yaw = p.readUserDebugParameter(camera_yaw_slider)
     pitch = p.readUserDebugParameter(camera_pitch_slider)
-    distance = p.readUserDebugParameter(camera_distance_slider)
+    distance_camera = p.readUserDebugParameter(camera_distance_slider)
 
 
     # Aumenta l'angolo di rotazione
     angle += rotation_speed * (1 / 240)  # Incremento angolare
+    # calcoliamo la distanza tra i bordi dei vasi nella posizione della seconda sutura durante la prima
     if current_suture==1:
+        p.resetDebugVisualizerCamera(
+            cameraDistance=distance_camera,
+            cameraYaw=yaw,
+            cameraPitch=pitch,
+            cameraTargetPosition=semicircle_center
+        )
         needle_orientation=p.getQuaternionFromEuler([np.pi+angle,0,0])
         p.resetBasePositionAndOrientation(needle_id, needle_center, needle_orientation)
         mesh_data_vessel1 = p.getMeshData(vessel1, flags=p.MESH_DATA_SIMULATION_MESH)
@@ -120,23 +134,30 @@ while p.isConnected():
         mesh_data_vessel2 = p.getMeshData(vessel2, flags=p.MESH_DATA_SIMULATION_MESH)
         node_positions_vessel2 = mesh_data_vessel2[1]  # Lista delle posizioni dei nodi
         # Recupera la posizione del nodo specificato (indice 138)
-        if target_node_index_1 < len(node_positions_vessel1):
+        if target_node_index_1 < len(node_positions_vessel1): #se il nodo è presente
             target_node_position_1 = node_positions_vessel1[target_node_index_1]
 
             # Aggiorna la posizione del marker per seguire il nodo
             p.resetBasePositionAndOrientation(marker_body_1, target_node_position_1, [0, 0, 0, 1])
+        # secondo nodo del vaso 2 da seguire
         if target_node_index_2 < len(node_positions_vessel2):
             target_node_position_2 = node_positions_vessel2[target_node_index_2]
 
             # Aggiorna la posizione del marker per seguire il nodo
             p.resetBasePositionAndOrientation(marker_body_2, target_node_position_2, [0, 0, 0, 1])
+            # calcoliamo la norma del vettore con punti target
             distance= np.linalg.norm(np.array(target_node_position_1) - np.array(target_node_position_2))
-            print("Distanza:",distance)
+            print("Distanza linalg:",distance)
+
+        # ho provato ad utilizzare la funzione getClosestPoints ma non mi restituisce nulla
+        # forse perchè non vede i target come collision shape
         distance_info = p.getClosestPoints(bodyA=marker_body_1, bodyB=marker_body_2, distance=10.0)  # 10.0 è il raggio massimo di ricerca
         if len(distance_info)>0:
             pts=distance_info[0][8]# La distanza minima è nel campo 8 del risultato
             #distances.append(pts)
             print("Distanza:",pts)# Salva la distanza nell'array
+
+
 
     while movement==1: #mi serve per far muovere l'ago e non farlo teletrasportare
         p.stepSimulation()
@@ -160,16 +181,9 @@ while p.isConnected():
         yaw = p.readUserDebugParameter(camera_yaw_slider)
         pitch = p.readUserDebugParameter(camera_pitch_slider)
         distance = p.readUserDebugParameter(camera_distance_slider)
-        # Calcola la distanza minima tra i due vasi
-
-        distance_info = p.getClosestPoints(bodyA=vessel1, bodyB=vessel2, distance=1000.0)  # 10.0 è il raggio massimo di ricerca
-        # La distanza minima è nel campo 8 del risultato
-        distances.append(distance_info)  # Salva la distanza nell'array
-
-
 
         p.resetDebugVisualizerCamera(
-            cameraDistance=distance,
+            cameraDistance=distance_camera,
             cameraYaw=yaw,
             cameraPitch=pitch,
             cameraTargetPosition=semicircle_center
@@ -211,7 +225,7 @@ while p.isConnected():
 
     # Configura telecamera
     p.resetDebugVisualizerCamera(
-        cameraDistance=distance,
+        cameraDistance=distance_camera,
         cameraYaw=yaw,
         cameraPitch=pitch,
         cameraTargetPosition=semicircle_center
