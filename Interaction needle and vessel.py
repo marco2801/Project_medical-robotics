@@ -12,7 +12,7 @@ p.resetSimulation(p.RESET_USE_DEFORMABLE_WORLD)
 p.setGravity(0, 0, -9.81)
 
 BASE_DIR = Path(__file__).resolve().parent  # Cartella dello script
-ASSETS_DIR = BASE_DIR / "Important file"  # Cartella contenente i file
+ASSETS_DIR = BASE_DIR / "assets"  # Cartella contenente i file
 
 # File di input
 STL_FILE = str(ASSETS_DIR / "ago_66mm.stl")  # Converti in stringa per PyBullet
