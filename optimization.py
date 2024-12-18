@@ -30,8 +30,8 @@ def cost_function(needle_vars, *args):
 
     # Calculate suture parameters
     t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2)) # distance between the ideal entry/exit point and the edge of vessel
-    alpha_1 = np.arcsin(2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 + s0))# angle between tissue and the line which links the needle center and the actual exit point
-    alpha_2 = np.arcsin(2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0))# angle between tissue and the line which links the needle center and the actual entry point
+    alpha_1 = np.arcsin(np.clip(2 * np.sin(gamma / 2) /dc * (l0 - np.tan((np.pi - gamma) / 2)) *(lio / 2 + s0), -1, 1))# angle between tissue and the line which links the needle center and the actual exit point
+    alpha_2 = np.arcsin(np.clip(2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0), -1, 1))# angle between tissue and the line which links the needle center and the actual entry point
     beta_in = np.pi / 2 + alpha_2 #entry angle
     beta_out = np.pi / 2 + alpha_1 #exit angle
     dh = abs(-dc / 2 + l0 - t * np.sin((np.pi - gamma) / 2))# needle depth
@@ -55,7 +55,7 @@ def bite_time_constraint(needle_vars, *args): # Bite time constrain= rear end of
     s0, l0, dc = needle_vars
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
     t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
-    alpha_2 = np.arcsin(2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0))
+    alpha_2 = np.arcsin(np.clip(2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0), -1, 1))
     ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))
     qy = np.sin(2 * np.pi * an) * (ww / 2 + (t - ein) * np.cos((np.pi - gamma) / 2) - s0) + np.cos(2 * np.pi * an) * (ein * np.sin((np.pi - gamma) / 2) - l0) + l0 # y coordinate of the rear end of the needle (in plane paper)
     return qy - t * np.sin((np.pi - gamma) / 2) - hti

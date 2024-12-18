@@ -4,20 +4,13 @@ import pybullet_data
 import numpy as np
 import time
 from pathlib import Path
-
+ 
 # Connessione a PyBullet
 p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.resetSimulation(p.RESET_USE_DEFORMABLE_WORLD)
 p.setGravity(0, 0, -9.81)
 
-BASE_DIR = Path(__file__).resolve().parent  # Cartella dello script
-ASSETS_DIR = BASE_DIR / "Important file"  # Cartella contenente i file
-
-# File di input
-STL_FILE = str(ASSETS_DIR / "ago_66mm.stl")  # Converti in stringa per PyBullet
-VESSEL_OBJ = str(ASSETS_DIR / "Arteria_piena.obj")
-VESSEL_VTK = str(ASSETS_DIR / "Arteria_piena.vtk")
 # Caricamento del piano
 p.loadURDF("plane.urdf", [0, 0, 0])
 
@@ -30,11 +23,15 @@ def create_needle_from_stl(file_path, position, orientation, scale=0.01):
                                   baseOrientation=orientation)
     return needle_id
 
+BASE_DIR = Path(__name__).resolve().parent
 
+ASSETS_DIR = BASE_DIR / "Important file"
+STL_FILE = ASSETS_DIR / "ago_66mm.stl"
+VESSEL_OBJ = ASSETS_DIR / "Arteria_piena.obj"
+VESSEL_VTK = ASSETS_DIR / "Arteria_piena.vtk"
 # Parametri del vaso
 vessel_outer_radius = 0.5  # Raggio esterno del vaso (50 mm)
 vessel_length = 1.0  # Lunghezza del vaso
-
 
 # Parametri del semicerchio
 radius = 0.33  # Raggio del semicerchio in metri (33 mm)
@@ -96,17 +93,13 @@ while p.isConnected():
 
     # Aumenta l'angolo di rotazione
     angle += rotation_speed * (1 / 240)  # Incremento angolare
-    if current_suture==1:
-        needle_orientation=p.getQuaternionFromEuler([np.pi+angle,0,0])
-        p.resetBasePositionAndOrientation(needle_id, needle_center, needle_orientation)
-    
     while movement==1: #mi serve per far muovere l'ago e non farlo teletrasportare
         p.stepSimulation()
         angle += rotation_speed * (1 / 240)
         if angle <= current_angle:
             p.resetBasePositionAndOrientation(needle_id, last_needle_center, needle_orientation)
             needle_orientation=p.getQuaternionFromEuler([np.pi,current_angle,0])
-            needle_center=[vessel_outer_radius*np.sin(previous_current_angle+angle),0,vessel_outer_radius+vessel_outer_radius*np.cos(previous_current_angle+angle)]#faccio luovere da dove ho lasciato
+            needle_center=[0.05+vessel_outer_radius*np.sin(previous_current_angle+angle),0,0.05+vessel_outer_radius+vessel_outer_radius*np.cos(previous_current_angle+angle)]#faccio luovere da dove ho lasciato
             p.resetBasePositionAndOrientation(needle_id, needle_center, needle_orientation)
         else:
             needle_center=[vessel_outer_radius*np.sin(current_angle),0,vessel_outer_radius+vessel_outer_radius*np.cos(current_angle)]
@@ -128,17 +121,17 @@ while p.isConnected():
             cameraPitch=pitch,
             cameraTargetPosition=semicircle_center
         )
-        if angle>33/18*np.pi:
+        if angle> np.pi:
             rot_angle=0
         #  angle=np.pi+0.01
 
-    if angle>33/18*np.pi and current_suture<=num_suture and rot_angle==0:
+    if angle>np.pi and current_suture<=num_suture and rot_angle==0:
         angle=0
-        previous_current_angle=suture_angle*(current_suture-1)#mi serve per non cominciare sempre da sopra il vaso ma da dove ave lasciato
-        
+        previous_current_angle=suture_angle*(current_suture-1) #mi serve per non cominciare sempre da sopra il vaso ma da dove ave lasciato
         current_angle=current_suture*suture_angle
+
         #needle_orientation=p.getQuaternionFromEuler([np.pi+angle,current_angle,0])
-        last_needle_center=[1+vessel_outer_radius*np.sin(previous_current_angle),0,1+vessel_outer_radius+vessel_outer_radius*np.cos(previous_current_angle)]
+        last_needle_center=[vessel_outer_radius*np.sin(current_angle),0,vessel_outer_radius+vessel_outer_radius*np.cos(current_angle)]
         current_suture=current_suture+1
         rot_angle=1
         movement=1
@@ -147,7 +140,10 @@ while p.isConnected():
         needle_position = [0, 0, 2*vessel_outer_radius]  # Posizione iniziale
         needle_orientation = p.getQuaternionFromEuler([0, 0, 0])  # Orientamento iniziale
         p.resetBasePositionAndOrientation(needle_id, needle_center, needle_orientation)
-    
+    if current_suture==1:
+        needle_orientation=p.getQuaternionFromEuler([np.pi+angle,0,0])
+        p.resetBasePositionAndOrientation(needle_id, needle_center, needle_orientation)
+
     #angle += rotation_speed * (1 / 240)
     p.resetBasePositionAndOrientation(needle_id, needle_center, needle_orientation)
 

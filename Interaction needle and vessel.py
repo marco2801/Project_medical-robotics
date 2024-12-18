@@ -3,12 +3,28 @@ import pybullet as p
 import pybullet_data
 import numpy as np
 import time
+from pathlib import Path
 
 # Connessione a PyBullet
 p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.resetSimulation(p.RESET_USE_DEFORMABLE_WORLD)
 p.setGravity(0, 0, -9.81)
+
+BASE_DIR = Path(__file__).resolve().parent  # Cartella dello script
+ASSETS_DIR = BASE_DIR / "Important file"  # Cartella contenente i file
+
+# File di input
+STL_FILE = str(ASSETS_DIR / "ago_66mm.stl")  # Converti in stringa per PyBullet
+VESSEL_OBJ = str(ASSETS_DIR / "Arteria_piena.obj")
+VESSEL_VTK = str(ASSETS_DIR / "Arteria_piena.vtk")
+
+
+print(f"BASE_DIR: {BASE_DIR}")
+print(f"ASSETS_DIR: {ASSETS_DIR}")
+print(f"STL_FILE: {STL_FILE}")
+print(f"VESSEL_OBJ: {VESSEL_OBJ}")
+print(f"VESSEL_VTK: {VESSEL_VTK}")
 
 # Caricamento del piano
 p.loadURDF("plane.urdf", [0, 0, 0])
@@ -35,13 +51,13 @@ needle_center=[0, 0, 2*vessel_outer_radius+radius-0.01]  # Posizione del centro 
 # Parametri dell'ago
 needle_position = [0, 0, 2*vessel_outer_radius]  # Posizione iniziale
 needle_orientation = p.getQuaternionFromEuler([np.pi, 0, 0])  # Orientamento iniziale
-needle_id = create_needle_from_stl("ago_66mm.stl", needle_position, needle_orientation, scale=0.01)
+needle_id = create_needle_from_stl(STL_FILE, needle_position, needle_orientation, scale=0.01)
 
 
 # Posizionamento del vaso
 vessel1 = p.loadSoftBody(
-    "Arteria_piena.obj",
-    simFileName="Arteria_piena.vtk",
+    VESSEL_OBJ,
+    simFileName=VESSEL_VTK,
     basePosition=[-vessel_outer_radius, 0, 0],  # Centro del vaso allineato sull'asse Z
     baseOrientation=p.getQuaternionFromEuler([np.pi/2, 0, 0]),
     scale=0.1,
@@ -55,7 +71,7 @@ vessel1 = p.loadSoftBody(
     collisionMargin=0.01
 )
 
-vessel2=p.loadSoftBody("Arteria_piena.obj", simFileName="Arteria_piena.vtk", basePosition=[-vessel_outer_radius, 2*vessel_length+0.05, 0], baseOrientation=p.getQuaternionFromEuler([ np.pi/2,0, 0]),
+vessel2=p.loadSoftBody(VESSEL_OBJ, simFileName=VESSEL_VTK, basePosition=[-vessel_outer_radius, 2*vessel_length+0.05, 0], baseOrientation=p.getQuaternionFromEuler([ np.pi/2,0, 0]),
                        scale=0.1, mass=4, useNeoHookean=1, NeoHookeanMu=5000, NeoHookeanLambda=1000, NeoHookeanDamping=0.01, useSelfCollision=1, frictionCoeff=0.5, collisionMargin=0.01)
 
 
