@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize
+import matplotlib.pyplot as plt
 
 # Constants and initial parameters
 lio = 11  # Length between the desired entry/exit points (mm)
@@ -88,7 +89,7 @@ for an in an_values:
         args=(gamma, lio, ww, lambda_weights, an, delta_min, delta_max),
         bounds=bounds,
         constraints=constraints,
-        method='SLSQP',  # Sequential Least Squares Quadratic Programming
+        method='trust-constr',  # Sequential Least Squares Quadratic Programming
         options={'disp': True}
     )
 
