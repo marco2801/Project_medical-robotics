@@ -49,7 +49,7 @@ def cost_function(needle_vars, *args):
 
     # Calculating the normalized cost function
     weighted_terms = [lambda_weights[i] * abs(normalized_terms[i]) for i in range(len(normalized_terms))]
-    return sum(weighted_terms)
+    return sum(weighted_terms)/sum(lambda_weights) #aggiunto la somma dei lambda per la divisione
 
 # Constraints
 def bite_time_constraint(needle_vars, *args): # Bite time constrain= rear end of the needle is not in contact with the tissue 

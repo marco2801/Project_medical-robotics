@@ -62,7 +62,7 @@ def cost_function(needle_vars, *args):
     weighted_terms = [
         lambda_weights[i] * abs(normalized_terms[i]) for i in range(len(normalized_terms))
     ]
-    return sum(weighted_terms)
+    return sum(weighted_terms)/sum(lambda_weights)
 
 # Constraints
 
@@ -112,7 +112,7 @@ for an in an_values:
         ranges=ranges,
         args=(gamma, lio, ww, lambda_weights, an, delta_min, delta_max),
         full_output=True,
-        finish= minimize,
+        finish= None,
         Ns=Ns,
         disp = True
     )
@@ -129,12 +129,12 @@ for an in an_values:
 # Dopo aver trovato la soluzione ottimale
 if best_solution:
     optimal_vars, optimal_an = best_solution
-    print(f"Optimal solution found using brute force: s0={optimal_vars[0]:.2f}, "
+    print(f"Optimal solution found using brute force: Cost function value C = {best_cost}, s0={optimal_vars[0]:.2f}, "
           f"l0={optimal_vars[1]:.2f}, dc={optimal_vars[2]:.2f}, an={optimal_an:.2f}")
 
     # Genera un paesaggio della funzione di costo
-    s0_vals = np.linspace(-lio / 2, lio / 2, 50)  # Variazioni di s0
-    l0_vals = np.linspace(0, lio, 50)            # Variazioni di l0
+    s0_vals = np.linspace(-lio / 2, lio / 2, 100)  # Variazioni di s0
+    l0_vals = np.linspace(0, lio, 100)            # Variazioni di l0
     costs = np.zeros((len(s0_vals), len(l0_vals)))
 
     for i, s0 in enumerate(s0_vals):
