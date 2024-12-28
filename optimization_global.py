@@ -6,13 +6,13 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # input costants (geoemtric parameters of the suture)
-lio = 16 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
-ww = 5.5  # wound width, space between vessel (mm)
+lio = 15 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
+ww = 5  # wound width, space between vessel (mm)
 lins = 10  # minimum grasping needle length (mm)
 hti = 8  # Input to stop unwanted needle-tissue contact at the end of the suture (mm)
 
 # Tunable parameters
-gamma = np.pi*4/5 # angle between vessels
+gamma = np.pi # angle between vessels
 lambda_weights = [1, 1, 1, 1, 1, 1]  # weights for suture parameters
 an_values = [1/4, 3/8, 1/2, 5/8]  # discrete values of needle shape
 
@@ -41,8 +41,8 @@ def cost_function(needle_vars, *args):
 
     # SUTURE PARAMETERS subjected to lambda weights
     # entry and exit angles [rad]
-    beta_in = np.pi/2 + alpha_2
-    beta_out = np.pi/2 + alpha_1
+    beta_in = np.clip(np.pi/2 + alpha_2,0, np.pi)
+    beta_out = np.clip(np.pi/2 + alpha_1,0, np.pi)
     #suture depth [mm]
     dh = abs(-dc/2 + l0 - t * np.sin((np.pi-gamma)/2))
     # simmetry [mm]
@@ -133,7 +133,19 @@ def extraction_time_constraint(needle_vars, *args):
     s0, l0, dc = needle_vars
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
-    return 
+    t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
+    alpha_1 = np.arcsin(np.clip(
+        2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 + s0),
+        -1, 1
+    ))
+    eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
+    py = (
+       np.sin(2 * np.pi * an) * (-ww / 2 - (t - eout) * np.cos((np.pi - gamma) / 2) - s0)
+        + np.cos(2 * np.pi * an) * (eout * np.sin((np.pi - gamma) / 2) - l0)
+        + l0
+    )
+
+    return py - t * np.sin((np.pi - gamma) / 2) - hti
 
 
 def cost_function_brute(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max):
