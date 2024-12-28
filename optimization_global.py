@@ -3,28 +3,29 @@ from scipy.optimize import brute
 from scipy.optimize import fmin
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 # input costants (geoemtric parameters of the suture)
-lio = 15 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
-ww = 5  # wound width, space between vessel (mm)
+lio = 16 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
+ww = 5.5  # wound width, space between vessel (mm)
 lins = 10  # minimum grasping needle length (mm)
 hti = 8  # Input to stop unwanted needle-tissue contact at the end of the suture (mm)
 
-gamma = np.pi  # angle between vessels
+# Tunable parameters
+gamma = np.pi*4/5 # angle between vessels
 lambda_weights = [1, 1, 1, 1, 1, 1]  # weights for suture parameters
 an_values = [1/4, 3/8, 1/2, 5/8]  # discrete values of needle shape
 
-# DELTA_order: beta_in, e_in, dh, sn, beta_out, e_out
+# DELTA_order: beta_in, e_in, dh, sn, beta_out, e_out (IS IT CORRECT?)
 delta_min = [0, 0, 0, 0, 0, 0]  # least feasible value for the errors between actual and desirerd results
-delta_max = [np.pi / 2, lio / 2, lio, lio / 2, np.pi / 2, lio / 2]  # worst possible errors
+delta_max = [np.pi/2, lio / 2, lio, lio / 2, np.pi/2, lio / 2]  # worst possible errors
 
-# COST FUNCTION
+# COST FUNCTION (without constraints)
 def cost_function(needle_vars, *args):
     s0, l0, dc = needle_vars            
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
     # Suture parameters computation
-
     # t = distance between desired entry (Id) and input edge of wound (Ei)
     t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
     # output angle between tissue surface and the needle center
@@ -64,8 +65,9 @@ def cost_function(needle_vars, *args):
     ]
     return sum(weighted_terms)/sum(lambda_weights)
 
-# Constraints
+## CONSTRAINTS DEFINITION
 
+#1) BT = BITE TIME
 def bite_time_constraint(needle_vars, *args):
     s0, l0, dc = needle_vars
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
@@ -82,20 +84,78 @@ def bite_time_constraint(needle_vars, *args):
     )
     return qy - t * np.sin((np.pi - gamma) / 2) - hti
 
-# Wrapper per la funzione di costo con vincoli
+#2.1) SW = SWITCHING TIME constraint --> possible needle grasping
+def switching_time_constraint_1(needle_vars, *args):
+    s0, l0, dc = needle_vars
+    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+
+    alpha_1 = np.arcsin(np.clip(
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0),
+        -1, 1
+    ))
+    alpha_2 = np.arcsin(np.clip(
+        2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0),
+        -1, 1
+    ))
+    lg = (np.pi*an*dc - dc/2*(gamma-alpha_1-alpha_2))/2
+
+    return lg-lins
+
+#2.2) SW = SWITCHING TIME constraint --> the needle passes externally to the wound
+def switching_time_constraint_2(needle_vars, *args):
+    s0, l0, dc = needle_vars
+    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+
+    alpha_1 = np.arcsin(np.clip(
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0),
+        -1, 1
+    ))
+    alpha_2 = np.arcsin(np.clip(
+        2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0),
+        -1, 1
+    ))
+    Ia_Oa = dc*np.sin((gamma-alpha_1-alpha_2)/2)
+
+    return Ia_Oa-ww
+
+#2.3) SW = SWITCHING TIME constraint --> the needle must be inside the tissue
+def switching_time_constraint_3(needle_vars, *args):
+    s0, l0, dc = needle_vars
+    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+
+    t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
+    dh_coord = -dc/2 +l0 -t*np.sin((np.pi-gamma)/2)
+
+    return dh_coord
+
+#3) ET = EXTRACTION TIME
+def extraction_time_constraint(needle_vars, *args):
+    s0, l0, dc = needle_vars
+    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+
+    return 
+
 
 def cost_function_brute(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max):
-    # Verifica dei vincoli
+    
+    # constraints verification
     if not bite_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
         return np.inf
+    if not switching_time_constraint_1(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+        return np.inf
+    if not switching_time_constraint_2(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+        return np.inf
+    if not switching_time_constraint_3(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) <= 0:
+        return np.inf
+    if not extraction_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+        return np.inf
 
-    # Restituisce la funzione di costo
     return cost_function(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max)
 
-# Configurazione del metodo brute
+# Feasible ranges
 ranges = [
     (-lio / 2, lio / 2),  # s0
-    (0, lio),             # l0
+    (0, 3*lio),           # l0
     (10, 77)              # dc
 ]
 
@@ -112,7 +172,7 @@ for an in an_values:
         ranges=ranges,
         args=(gamma, lio, ww, lambda_weights, an, delta_min, delta_max),
         full_output=True,
-        finish= None,
+        finish= fmin,
         Ns=Ns,
         disp = True
     )
@@ -132,30 +192,50 @@ if best_solution:
     print(f"Optimal solution found using brute force: Cost function value C = {best_cost}, s0={optimal_vars[0]:.2f}, "
           f"l0={optimal_vars[1]:.2f}, dc={optimal_vars[2]:.2f}, an={optimal_an:.2f}")
 
-    # Genera un paesaggio della funzione di costo
-    s0_vals = np.linspace(-lio / 2, lio / 2, 100)  # Variazioni di s0
-    l0_vals = np.linspace(0, lio, 100)            # Variazioni di l0
-    costs = np.zeros((len(s0_vals), len(l0_vals)))
+    # Configura i valori delle griglie
+    s0_vals = np.linspace(-lio / 2, lio / 2, 30)  
+    l0_vals = np.linspace(0, 2*lio, 30)            
+    dc_vals = np.linspace(10, 77, 30)           
 
-    for i, s0 in enumerate(s0_vals):
-        for j, l0 in enumerate(l0_vals):
-            costs[i, j] = cost_function_brute(
-                (s0, l0, optimal_vars[2]),  # Usa il valore ottimale per dc
-                gamma, lio, ww, lambda_weights, optimal_an, delta_min, delta_max
-            )
+    # Creazione figure
+    fig = plt.figure(figsize=(16, 12))
 
-    # Visualizza il paesaggio della funzione di costo
-    import matplotlib.pyplot as plt
+    # Genera 4 grafici, uno per ciascun valore di an
+    for idx, an in enumerate(an_values):
 
-    plt.figure(figsize=(8, 6))
-    plt.contourf(s0_vals, l0_vals, costs, levels=50, cmap='viridis')
-    plt.plot(optimal_vars[0], optimal_vars[1], 'ro', label='Optimal Solution')
-    plt.legend()
-    plt.colorbar(label='Cost')
-    plt.xlabel('s0')
-    plt.ylabel('l0')
-    plt.title(f'Cost Landscape (dc={optimal_vars[2]:.2f}, an={optimal_an:.2f})')
+        # Griglia 3D per s0, l0, dc
+        S0, L0, DC = np.meshgrid(s0_vals, l0_vals, dc_vals)
+        
+        # Crea il sottografico
+        ax = fig.add_subplot(2, 2, idx+1, projection='3d')
+        ax.set_title(f"Cost Landscape for an={an:.2f}")
+        ax.set_xlabel('s0')
+        ax.set_ylabel('l0')
+        ax.set_zlabel('dc')
+        
+        # Calcolo dei costi sulla griglia
+        Costs = np.zeros(S0.shape)
+        for i in range(S0.shape[0]):
+            for j in range(S0.shape[1]):
+                for k in range(S0.shape[2]):
+                    s0 = S0[i, j, k]
+                    l0 = L0[i, j, k]
+                    dc = DC[i, j, k]
+                    cost = cost_function_brute(
+                        (s0, l0, dc), 
+                        gamma, lio, ww, lambda_weights, an, delta_min, delta_max
+                        )
+                    Costs[i, j, k] = cost if np.isfinite(cost) else np.nan
+                    #print(f"Processing an={an}, idx={idx}, s0={s0}, l0={l0}, dc={dc}, cost={cost}")
+       
+        # Scatter dei dati con color mapping
+        scatter = ax.scatter(S0.flatten(), L0.flatten(), DC.flatten(), c=Costs.flatten(), cmap='viridis')
+        fig.colorbar(scatter, ax=ax, shrink=0.5, aspect=10, label="Cost")
+    
+    # Mostra il grafico
+    plt.tight_layout()
     plt.show()
+
 else:
     print("The brute force optimization did not find a valid solution.")
 

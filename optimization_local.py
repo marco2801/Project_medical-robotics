@@ -3,7 +3,7 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
 # Constants and initial parameters
-lio = 11  # Length between the desired entry/exit points (mm)
+lio = 15  # Length between the desired entry/exit points (mm)
 ww = 5  # Wound width, gap between the vessels (to be tuned)(mm)
 lins = 10  # Minimum length that can be grasped by the needle (mm)
 hti = 8  # Input to stop unwanted needle-tissue contact at the end of the suture (mm)
@@ -69,7 +69,7 @@ bounds = [(-lio / 2, lio / 2),  # s0
           (0, lio),             # l0
           (10, 77)]             # dc (maximum clinical needle diameter)
 
-initial_guess = [0, 0, 30]  # Reasonable initial values to be tuned
+initial_guess = [0, 10, 36]  # Reasonable initial values to be tuned
 
 # Loop for each discrete value of an
 best_solution = None
