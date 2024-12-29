@@ -171,7 +171,7 @@ ranges = [
     (10, 77)              # dc
 ]
 
-Ns = 50  # Risoluzione della griglia
+Ns = 60  # Risoluzione della griglia
 
 # Ciclo sui valori discreti di an
 best_solution = None
@@ -205,9 +205,9 @@ if best_solution:
           f"l0={optimal_vars[1]:.2f}, dc={optimal_vars[2]:.2f}, an={optimal_an:.2f}")
 
     # Configura i valori delle griglie
-    s0_vals = np.linspace(-lio / 2, lio / 2, 30)  
-    l0_vals = np.linspace(0, 2*lio, 30)            
-    dc_vals = np.linspace(10, 77, 30)           
+    s0_vals = np.linspace(-lio / 2, lio / 2, 50)  
+    l0_vals = np.linspace(0, 2*lio, 50)            
+    dc_vals = np.linspace(10, 77, 50)           
 
     # Creazione figure
     fig = plt.figure(figsize=(16, 12))
@@ -250,4 +250,53 @@ if best_solution:
 
 else:
     print("The brute force optimization did not find a valid solution.")
+
+##% NEEDLE PLOTTING
+
+optimal_s0 = best_solution[0][0]  # Optimal s0
+optimal_l0 = best_solution[0][1]  # Optimal l0
+optimal_dc = best_solution[0][2]  # Optimal dc
+optimal_an = best_solution[1]     # Optimal an
+
+# Calculate the arc length and radius for the circle
+arc_length = optimal_an * np.pi * optimal_dc
+radius = optimal_dc / 2
+
+# Create a figure and axis
+fig, ax = plt.subplots(figsize=(10, 8))
+
+# Plot the circle (lower part of the circumference)
+theta = np.linspace(np.pi, 2 * np.pi, 100)  # Lower half of the circle
+x_circle = radius * np.cos(theta) + optimal_s0
+y_circle = radius * np.sin(theta) + optimal_l0  # Shift the circle downward by optimal_l0
+ax.plot(x_circle, y_circle, label=f'Needle Geometry (an={optimal_an:.2f})')
+
+# Mark the optimal point
+ax.plot(optimal_s0, optimal_l0, 'ro', label=f'Optimal Point (s0={optimal_s0:.2f}, l0={optimal_l0:.2f})')
+
+ideal_points = [lio / 2, -lio / 2]
+ax.plot(ideal_points, [0, 0], 'go', label=f'Desired Points (±lio/2)', markersize=10)
+
+# vessel geometry
+ax.plot([ww / 2, ww / 2], [0, -2 * lio], 'k')
+ax.plot([-ww / 2, -ww / 2], [0, -2 * lio], 'k')
+ax.plot([ww / 2, 2.5*lio], [0, 0], 'k')
+ax.plot([-ww / 2, -2.5*lio], [0, 0], 'k')
+
+# Add labels, legend, and grid
+ax.set_xlabel('s0 (x coordinate)', fontsize=12)
+ax.set_ylabel('l0 (y coordinate)', fontsize=12)
+ax.set_title('Optimal Needle Geometry and Desired Points', fontsize=14)
+ax.axhline(0, color='black', linewidth=0.8, linestyle='--')  # Reference line
+ax.axvline(0, color='black', linewidth=0.8, linestyle='--')
+ax.legend()
+ax.grid(True)
+
+# Adjust axis limits for better visibility
+ax.set_xlim([-1.2*radius, 1.2*radius])
+ax.set_ylim([-2 * lio, lio])
+
+# Show the plot
+plt.show()
+
 
