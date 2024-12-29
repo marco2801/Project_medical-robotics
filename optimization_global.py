@@ -17,8 +17,11 @@ lambda_weights = [1, 1, 1, 1, 1, 1]  # weights for suture parameters
 an_values = [1/4, 3/8, 1/2, 5/8]  # discrete values of needle shape
 
 # DELTA_order: beta_in, e_in, dh, sn, beta_out, e_out (IS IT CORRECT? HOW TO DEFINE THE MAX ERRORS?)
-delta_min = [0, 0, 0, 0, 0, 0]  # least feasible value for the errors between actual and desirerd results
+delta_min = [0, 0, 0, 0, 0, 0]  # least feasible value for the errors between actual and desired results
 delta_max = [np.pi/2, 38.5, 38.5-lio/2, lio, np.pi/2, 38.5]  # worst possible errors
+
+# t = distance between desired entry (Id) and input edge of wound (Ei)
+t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
 
 # COST FUNCTION (without constraints)
 def cost_function(needle_vars, *args):
@@ -26,23 +29,21 @@ def cost_function(needle_vars, *args):
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
     # Suture parameters computation
-    # t = distance between desired entry (Id) and input edge of wound (Ei)
-    t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
     # output angle between tissue surface and the needle center
     alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0),
+        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
         -1, 1
     ))
     # input angle between tissue surface and the needle center
     alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2)) * (lio/2 - s0),
+        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 - s0)),
         -1, 1
     ))
 
     # SUTURE PARAMETERS subjected to lambda weights
     # entry and exit angles [rad]
-    beta_in = np.clip(np.pi/2 + alpha_2,0, np.pi)
-    beta_out = np.clip(np.pi/2 + alpha_1,0, np.pi)
+    beta_in = np.pi/2 + alpha_2
+    beta_out = np.pi/2 + alpha_1
     #suture depth [mm]
     dh = abs(-dc/2 + l0 - t * np.sin((np.pi-gamma)/2))
     # simmetry [mm]
@@ -71,9 +72,8 @@ def cost_function(needle_vars, *args):
 def bite_time_constraint(needle_vars, *args):
     s0, l0, dc = needle_vars
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
-    t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
     alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0),
+        2 * np.sin(gamma / 2) / dc * ((l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0)),
         -1, 1
     ))
     ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))
@@ -90,11 +90,11 @@ def switching_time_constraint_1(needle_vars, *args):
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
     alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0),
+        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
         -1, 1
     ))
     alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0),
+        2 * np.sin(gamma / 2) / dc * ((l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0)),
         -1, 1
     ))
     lg = (np.pi*an*dc - dc/2*(gamma-alpha_1-alpha_2))/2
@@ -107,11 +107,11 @@ def switching_time_constraint_2(needle_vars, *args):
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
     alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0),
+        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
         -1, 1
     ))
     alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0),
+        2 * np.sin(gamma / 2) / dc * ((l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0)),
         -1, 1
     ))
     Ia_Oa = dc*np.sin((gamma-alpha_1-alpha_2)/2)
@@ -123,7 +123,6 @@ def switching_time_constraint_3(needle_vars, *args):
     s0, l0, dc = needle_vars
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
-    t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
     dh_coord = -dc/2 +l0 -t*np.sin((np.pi-gamma)/2)
 
     return dh_coord
@@ -133,9 +132,8 @@ def switching_time_constraint_4(needle_vars, *args):
     s0, l0, dc = needle_vars
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
-    t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
     alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2)) * (lio/2 - s0),
+        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 - s0)),
         -1, 1
     ))
     ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))
@@ -149,9 +147,8 @@ def switching_time_constraint_5(needle_vars, *args):
     s0, l0, dc = needle_vars
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
-    t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
     alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0),
+        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
         -1, 1
     ))
     eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
@@ -165,9 +162,8 @@ def extraction_time_constraint(needle_vars, *args):
     s0, l0, dc = needle_vars
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
-    t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
     alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 + s0),
+        2 * np.sin(gamma / 2) / dc * ((l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 + s0)),
         -1, 1
     ))
     eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
@@ -213,7 +209,7 @@ best_solution = None
 best_cost = float('inf')
 
 for an in an_values:
-    # Ottimizzazione brute
+
     result = brute(
         cost_function_brute,
         ranges=ranges,
@@ -224,43 +220,59 @@ for an in an_values:
         disp = True
     )
 
-    # Estrai il minimo trovato
     min_cost, min_vars = result[1], result[0]
 
-    # Aggiorna la soluzione migliore
     if min_cost < best_cost:
         best_cost = min_cost
         best_solution = (min_vars, an)
 
-# Dopo aver trovato la soluzione ottimale
-# Dopo aver trovato la soluzione ottimale
+
 if best_solution:
     optimal_vars, optimal_an = best_solution
-    print(f"Optimal solution found using brute force: Cost function value C = {best_cost}, s0={optimal_vars[0]:.2f}, "
-          f"l0={optimal_vars[1]:.2f}, dc={optimal_vars[2]:.2f}, an={optimal_an:.2f}")
 
-    # Configura i valori delle griglie
+    optimal_s0 = optimal_vars[0]
+    optimal_l0 = optimal_vars[1] 
+    optimal_dc = optimal_vars[2]  
+
+    # parameters to be tuned (optimal results)
+    alpha_1_best = np.arcsin(np.clip(
+        2 * np.sin(gamma / 2) / optimal_dc * ((optimal_l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 + optimal_s0)),
+        -1, 1
+    ))
+    alpha_2_best = np.arcsin(np.clip(
+        2 * np.sin(gamma/2) / optimal_dc * ((optimal_l0 - np.tan((np.pi - gamma)/2)) * (lio/2 - optimal_s0)),
+        -1, 1
+    ))
+    beta_in_best = np.pi/2 + alpha_2_best
+    beta_out_best = np.pi/2 + alpha_1_best
+    ein_best = (-optimal_dc / 2 * np.cos(alpha_2_best + (np.pi - gamma) / 2) + lio / 2 - optimal_s0) / (np.cos((np.pi - gamma) / 2))
+    eout_best = (-optimal_dc / 2 * np.cos(alpha_1_best + (np.pi - gamma) / 2) + lio / 2 + optimal_s0) / (np.cos((np.pi - gamma) / 2))
+    dh_best = abs(-optimal_dc/2 + optimal_l0 - t*np.sin((np.pi-gamma)/2))
+    sn_best = abs(optimal_s0)
+    
+    print(f"Optimal solution found using brute force: Cost function value C = {best_cost}, s0={optimal_s0:.2f}, "
+          f"l0={optimal_l0:.2f}, dc={optimal_dc:.2f}, an={optimal_an:.2f}")
+    print(f"Optimal values of suture parameters: beta_in = {beta_in_best:.2f}, beta_out = {beta_out_best:.2f}, e_in = {ein_best:.2f}, "
+          f"e_out = {eout_best:.2f}, sn = {sn_best:.2f}, dh = {dh_best:.2f}, alpha_1 = {alpha_1_best:.2f}, alpha_2 = {alpha_2_best:.2f}")
+
+    # mesh grid
     s0_vals = np.linspace(-lio / 2, lio / 2, 50)  
     l0_vals = np.linspace(0, 2*lio, 50)            
     dc_vals = np.linspace(10, 77, 50)           
 
-    # Creazione figure
     fig = plt.figure(figsize=(16, 12))
 
-    # Genera 4 grafici, uno per ciascun valore di an
     for idx, an in enumerate(an_values):
 
-        # Griglia 3D per s0, l0, dc
         S0, L0, DC = np.meshgrid(s0_vals, l0_vals, dc_vals)
         
-        # Crea il sottografico
         ax = fig.add_subplot(2, 2, idx+1, projection='3d')
         ax.set_title(f"Cost Landscape for an={an:.2f}")
         ax.set_xlabel('s0')
         ax.set_ylabel('l0')
         ax.set_zlabel('dc')
         
-        # Calcolo dei costi sulla griglia
+        # costs computation
         Costs = np.zeros(S0.shape)
         for i in range(S0.shape[0]):
             for j in range(S0.shape[1]):
@@ -275,11 +287,9 @@ if best_solution:
                     Costs[i, j, k] = cost if np.isfinite(cost) else np.nan
                     #print(f"Processing an={an}, idx={idx}, s0={s0}, l0={l0}, dc={dc}, cost={cost}")
        
-        # Scatter dei dati con color mapping
         scatter = ax.scatter(S0.flatten(), L0.flatten(), DC.flatten(), c=Costs.flatten(), cmap='viridis')
         fig.colorbar(scatter, ax=ax, shrink=0.5, aspect=10, label="Cost")
     
-    # Mostra il grafico
     plt.tight_layout()
     plt.show()
 
@@ -288,25 +298,17 @@ else:
 
 ##% NEEDLE PLOTTING
 
-optimal_s0 = best_solution[0][0]  # Optimal s0
-optimal_l0 = best_solution[0][1]  # Optimal l0
-optimal_dc = best_solution[0][2]  # Optimal dc
-optimal_an = best_solution[1]     # Optimal an
-
 # Calculate the arc length and radius for the circle
 arc_length = optimal_an * np.pi * optimal_dc
 radius = optimal_dc / 2
 
-# Create a figure and axis
 fig, ax = plt.subplots(figsize=(10, 8))
 
-# Plot the circle (lower part of the circumference)
 theta = np.linspace(np.pi, 2*np.pi, 100)  # Lower half of the circle
 x_circle = radius * np.cos(theta) + optimal_s0
 y_circle = radius * np.sin(theta) + optimal_l0 
 ax.plot(x_circle, y_circle, label=f'Needle Geometry (an={optimal_an:.2f}, dc={optimal_dc:.2f})')
 
-# Mark the optimal point
 ax.plot(optimal_s0, optimal_l0, 'ro', label=f'Optimal Point (s0={optimal_s0:.2f}, l0={optimal_l0:.2f})')
 
 ideal_points = [lio / 2, -lio / 2]
