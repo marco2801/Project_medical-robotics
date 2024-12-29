@@ -6,19 +6,19 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # input costants (geoemtric parameters of the suture)
-lio = 15 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
-ww = 5  # wound width, space between vessel (mm)
+lio = 16 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
+ww = 5.5  # wound width, space between vessel (mm)
 lins = 10  # minimum grasping needle length (mm)
 hti = 8  # Input to stop unwanted needle-tissue contact at the end of the suture (mm)
 
 # Tunable parameters
-gamma = np.pi # angle between vessels
+gamma = np.pi*4/5 # angle between vessels
 lambda_weights = [1, 1, 1, 1, 1, 1]  # weights for suture parameters
 an_values = [1/4, 3/8, 1/2, 5/8]  # discrete values of needle shape
 
-# DELTA_order: beta_in, e_in, dh, sn, beta_out, e_out (IS IT CORRECT?)
+# DELTA_order: beta_in, e_in, dh, sn, beta_out, e_out (IS IT CORRECT? HOW TO DEFINE THE MAX ERRORS?)
 delta_min = [0, 0, 0, 0, 0, 0]  # least feasible value for the errors between actual and desirerd results
-delta_max = [np.pi/2, lio / 2, lio, lio / 2, np.pi/2, lio / 2]  # worst possible errors
+delta_max = [np.pi/2, 38.5, 38.5-lio/2, lio, np.pi/2, 38.5]  # worst possible errors
 
 # COST FUNCTION (without constraints)
 def cost_function(needle_vars, *args):
@@ -55,7 +55,7 @@ def cost_function(needle_vars, *args):
     terms = [beta_in - np.pi / 2, ein, dh - lio / 2, sn, beta_out - np.pi / 2, eout]
 
     normalized_terms = [
-        (terms[i] - delta_min[i]) / (delta_max[i] - delta_min[i])
+        (abs(terms[i]) - delta_min[i]) / (delta_max[i] - delta_min[i])
         for i in range(len(terms))
     ]
 
@@ -128,6 +128,38 @@ def switching_time_constraint_3(needle_vars, *args):
 
     return dh_coord
 
+#2.4) SW = SWITCHING TIME constraint --> the needle enters from one side
+def switching_time_constraint_4(needle_vars, *args):
+    s0, l0, dc = needle_vars
+    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+
+    t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
+    alpha_2 = np.arcsin(np.clip(
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2)) * (lio/2 - s0),
+        -1, 1
+    ))
+    ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))
+    Id_Ei = [t*np.cos(np.pi-((np.pi-gamma)/2)),t*np.sin(np.pi-((np.pi-gamma)/2))]
+    Id_Ia = [ein*np.cos((np.pi-gamma)/2),t*np.sin(np.pi-(np.pi-gamma)/2)]
+
+    return 1 #- np.inner(Id_Ia,Id_Ei)/t**2
+
+#2.5) SW = SWITCHING TIME constraint --> the needle exits from the other side
+def switching_time_constraint_5(needle_vars, *args):
+    s0, l0, dc = needle_vars
+    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+
+    t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
+    alpha_1 = np.arcsin(np.clip(
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0),
+        -1, 1
+    ))
+    eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
+    Od_Eo = [t*np.cos((np.pi-gamma)/2), t*np.sin((np.pi-gamma)/2)]
+    Od_Oa = [eout*np.cos(np.pi-((np.pi-gamma)/2)), eout*np.sin(np.pi-((np.pi-gamma)/2))]
+
+    return 1 #- np.inner(Od_Oa,Od_Eo)/t**2
+
 #3) ET = EXTRACTION TIME
 def extraction_time_constraint(needle_vars, *args):
     s0, l0, dc = needle_vars
@@ -159,6 +191,10 @@ def cost_function_brute(needle_vars, gamma, lio, ww, lambda_weights, an, delta_m
         return np.inf
     if not switching_time_constraint_3(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) <= 0:
         return np.inf
+    if not switching_time_constraint_4(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+        return np.inf
+    if not switching_time_constraint_5(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+        return np.inf
     if not extraction_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
         return np.inf
 
@@ -171,9 +207,8 @@ ranges = [
     (10, 77)              # dc
 ]
 
-Ns = 60  # Risoluzione della griglia
+Ns = 50  # Risoluzione della griglia
 
-# Ciclo sui valori discreti di an
 best_solution = None
 best_cost = float('inf')
 
@@ -266,22 +301,26 @@ radius = optimal_dc / 2
 fig, ax = plt.subplots(figsize=(10, 8))
 
 # Plot the circle (lower part of the circumference)
-theta = np.linspace(np.pi, 2 * np.pi, 100)  # Lower half of the circle
+theta = np.linspace(np.pi, 2*np.pi, 100)  # Lower half of the circle
 x_circle = radius * np.cos(theta) + optimal_s0
-y_circle = radius * np.sin(theta) + optimal_l0  # Shift the circle downward by optimal_l0
-ax.plot(x_circle, y_circle, label=f'Needle Geometry (an={optimal_an:.2f})')
+y_circle = radius * np.sin(theta) + optimal_l0 
+ax.plot(x_circle, y_circle, label=f'Needle Geometry (an={optimal_an:.2f}, dc={optimal_dc:.2f})')
 
 # Mark the optimal point
 ax.plot(optimal_s0, optimal_l0, 'ro', label=f'Optimal Point (s0={optimal_s0:.2f}, l0={optimal_l0:.2f})')
 
 ideal_points = [lio / 2, -lio / 2]
-ax.plot(ideal_points, [0, 0], 'go', label=f'Desired Points (±lio/2)', markersize=10)
+ax.plot(ideal_points, [0, 0], 'go', label=f'Desired Points (±lio/2)', markersize=5)
 
 # vessel geometry
-ax.plot([ww / 2, ww / 2], [0, -2 * lio], 'k')
-ax.plot([-ww / 2, -ww / 2], [0, -2 * lio], 'k')
-ax.plot([ww / 2, 2.5*lio], [0, 0], 'k')
-ax.plot([-ww / 2, -2.5*lio], [0, 0], 'k')
+ax.plot([ww / 2, ww / 2], [(lio/2-ww/2)*np.tan((np.pi-gamma)/2), -2 * lio], 'k')
+ax.plot([-ww / 2, -ww / 2], [(lio/2-ww/2)*np.tan((np.pi-gamma)/2), -2 * lio], 'k')
+Eo = [-ww/2, (lio/2-ww/2)*np.tan((np.pi-gamma)/2)]
+Ei = [ww/2, (lio/2-ww/2)*np.tan((np.pi-gamma)/2)]
+Oa = [-2.5*lio,-2*lio*np.tan((np.pi-gamma)/2)]
+Ia = [2.5*lio,-2  *lio*np.tan((np.pi-gamma)/2)]
+ax.plot([Oa[0], Eo[0]], [Oa[1], Eo[1]], 'k')
+ax.plot([Ia[0], Ei[0]], [Ia[1], Ei[1]], 'k')
 
 # Add labels, legend, and grid
 ax.set_xlabel('s0 (x coordinate)', fontsize=12)
@@ -298,5 +337,3 @@ ax.set_ylim([-2 * lio, lio])
 
 # Show the plot
 plt.show()
-
-
