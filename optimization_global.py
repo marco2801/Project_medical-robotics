@@ -31,11 +31,11 @@ def cost_function(needle_vars, *args):
     alpha_1 = np.arcsin(np.clip(
         2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 + s0)),
         -1, 1
-    ))    # output angle between tissue surface and the needle center (CLIP does make sense?)
+    ))    # output angle between tissue surface and the needle center
     alpha_2 = np.arcsin(np.clip(
         2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 - s0)),
         -1, 1
-    ))    # input angle between tissue surface and the needle center (CLIP does make sense?)
+    ))    # input angle between tissue surface and the needle center
 
     beta_in = np.pi/2 + alpha_2 #entry angle
     beta_out = np.pi/2 + alpha_1 #exit angle
@@ -86,7 +86,7 @@ def switching_time_constraint_1(needle_vars, *args):
     alpha_1 = np.arcsin(np.clip(
         2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 + s0)),
         -1, 1
-    ))    # output angle between tissue surface and the needle center (CLIP does make sense?)
+    ))
     alpha_2 = np.arcsin(np.clip(
         2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 - s0)),
         -1, 1
@@ -103,7 +103,7 @@ def switching_time_constraint_2(needle_vars, *args):
     alpha_1 = np.arcsin(np.clip(
         2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 + s0)),
         -1, 1
-    ))    # output angle between tissue surface and the needle center (CLIP does make sense?)
+    ))
     alpha_2 = np.arcsin(np.clip(
         2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 - s0)),
         -1, 1
@@ -131,10 +131,10 @@ def switching_time_constraint_4(needle_vars, *args):
         -1, 1
     ))
     ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))
-    Id_Ei = [t*np.cos(np.pi-((np.pi-gamma)/2)),t*np.sin(np.pi-((np.pi-gamma)/2))]
-    Id_Ia = [ein*np.cos(np.pi-(np.pi-gamma)/2),ein*np.sin(np.pi-(np.pi-gamma)/2)]
+    Id_Ei = [t*np.cos(np.pi-((np.pi-gamma)/2)), t*np.sin(np.pi-((np.pi-gamma)/2))]
+    Id_Ia = [ein*np.cos(np.pi-(np.pi-gamma)/2), ein*np.sin(np.pi-(np.pi-gamma)/2)]
 
-    return 1 #- np.inner(Id_Ia,Id_Ei)/t**2
+    return 1 - np.inner(Id_Ia,Id_Ei)/t**2
 
 #2.5) SW = SWITCHING TIME constraint --> the needle exits from the other side (it doesn't work now)
 def switching_time_constraint_5(needle_vars, *args):
@@ -147,9 +147,9 @@ def switching_time_constraint_5(needle_vars, *args):
     ))
     eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
     Od_Eo = [t*np.cos((np.pi-gamma)/2), t*np.sin((np.pi-gamma)/2)]
-    Od_Oa = [eout*np.cos(np.pi-((np.pi-gamma)/2)), eout*np.sin(np.pi-((np.pi-gamma)/2))]
+    Od_Oa = [eout*np.cos((np.pi-gamma)/2), eout*np.sin((np.pi-gamma)/2)]
 
-    return 1 #- np.inner(Od_Oa,Od_Eo)/t**2
+    return 1 - np.inner(Od_Oa,Od_Eo)/t**2
 
 #3) ET = EXTRACTION TIME
 def extraction_time_constraint(needle_vars, *args):
@@ -168,7 +168,6 @@ def extraction_time_constraint(needle_vars, *args):
     )
 
     return py - t * np.sin((np.pi - gamma) / 2) - hti
-
 
 def cost_function_brute(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max):
 
