@@ -29,11 +29,11 @@ def cost_function(needle_vars, *args):
 
     # Suture parameters computation
     alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 + s0)),
         -1, 1
     ))    # output angle between tissue surface and the needle center (CLIP does make sense?)
     alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 - s0)),
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 - s0)),
         -1, 1
     ))    # input angle between tissue surface and the needle center (CLIP does make sense?)
 
@@ -65,8 +65,9 @@ def cost_function(needle_vars, *args):
 def bite_time_constraint(needle_vars, *args):
     s0, l0, dc = needle_vars
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+
     alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma / 2) / dc * ((l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0)),
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 - s0)),
         -1, 1
     ))
     ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))
@@ -83,11 +84,11 @@ def switching_time_constraint_1(needle_vars, *args):
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
     alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 + s0)),
         -1, 1
-    ))
+    ))    # output angle between tissue surface and the needle center (CLIP does make sense?)
     alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma / 2) / dc * ((l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0)),
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 - s0)),
         -1, 1
     ))
     lg = (np.pi*an*dc - dc/2*(gamma-alpha_1-alpha_2))/2
@@ -100,11 +101,11 @@ def switching_time_constraint_2(needle_vars, *args):
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
     alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 + s0)),
         -1, 1
-    ))
+    ))    # output angle between tissue surface and the needle center (CLIP does make sense?)
     alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma / 2) / dc * ((l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0)),
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 - s0)),
         -1, 1
     ))
     Ia_Oa = dc*np.sin((gamma-alpha_1-alpha_2)/2)
@@ -126,7 +127,7 @@ def switching_time_constraint_4(needle_vars, *args):
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
     alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 - s0)),
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 - s0)),
         -1, 1
     ))
     ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))
@@ -141,7 +142,7 @@ def switching_time_constraint_5(needle_vars, *args):
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
     alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 + s0)),
         -1, 1
     ))
     eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
@@ -156,7 +157,7 @@ def extraction_time_constraint(needle_vars, *args):
     gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
 
     alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma / 2) / dc * ((l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 + s0)),
+        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 + s0)),
         -1, 1
     ))
     eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
@@ -232,11 +233,11 @@ if best_solution: #The best solution among the an values
 
     # optimal results (debugging)
     alpha_1_best = np.arcsin(np.clip(
-        2 * np.sin(gamma / 2) / optimal_dc * ((optimal_l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 + optimal_s0)),
+        2 * np.sin(gamma / 2) / optimal_dc * (optimal_l0 - np.tan((np.pi - gamma) / 2) * (lio / 2 + optimal_s0)),
         -1, 1
     ))
     alpha_2_best = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / optimal_dc * ((optimal_l0 - np.tan((np.pi - gamma)/2)) * (lio/2 - optimal_s0)),
+        2 * np.sin(gamma/2) / optimal_dc * (optimal_l0 - np.tan((np.pi - gamma)/2) * (lio/2 - optimal_s0)),
         -1, 1
     ))
     beta_in_best = np.pi/2 + alpha_2_best
