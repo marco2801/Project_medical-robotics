@@ -14,18 +14,13 @@ gamma = np.pi*4/5 # angle between vessels
 lambda_weights = [1, 1, 1, 1, 1, 1]  # weights for suture parameters (tunable)
 an_values = [1/4, 3/8, 1/2, 5/8]  # discrete values of needle shape
 
-# DELTA_order: beta_in, e_in, dh, sn, beta_out, e_out (IS IT CORRECT? HOW TO DEFINE THE MAX ERRORS?)
-# 38.5mm is the max possible radius of the needle (dc/2)
-delta_min = [0, 0, 0, 0, 0, 0]  # least feasible value for the errors between actual and desired results
-delta_max = [np.pi/2, 38.5, 38.5-lio/2, lio, np.pi/2, 38.5]  # highest possible errors
-
 # t = distance between desired entry (Id) and input edge of wound (Ei) -- constant
 t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2)) # = 5.52mm (gamma =4pi/5, ww=5.5, lio=16)
 
 # COST FUNCTION (without constraints)
 def cost_function(needle_vars, *args):
     s0, l0, dc = needle_vars            
-    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+    gamma, lio, ww, lambda_weights, an = args
 
     # Suture parameters computation
     alpha_1 = np.arcsin(np.clip(
@@ -48,23 +43,17 @@ def cost_function(needle_vars, *args):
 
     #DELTA: actual values minus the ideal ones --> [mm] or [rad]
     terms = [beta_in - np.pi / 2, ein, dh - lio / 2, sn, beta_out - np.pi / 2, eout] 
-    normalized_terms = [
-        (abs(terms[i]) - delta_min[i]) / (delta_max[i] - delta_min[i])
-        for i in range(len(terms))
-    ]
-
-    # Normalized cost function
     weighted_terms = [
-        lambda_weights[i] * normalized_terms[i] for i in range(len(normalized_terms))
+        lambda_weights[i] * abs(terms[i]) for i in range(len(terms))
     ]
-    return sum(weighted_terms)/sum(lambda_weights)
+    return sum(weighted_terms)
 
 ## CONSTRAINTS DEFINITION
 
 #1) BT = BITE TIME
 def bite_time_constraint(needle_vars, *args):
     s0, l0, dc = needle_vars
-    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+    gamma, lio, ww, lambda_weights, an = args
     alpha_2 = np.arcsin(np.clip(
         2 * np.sin(gamma / 2) / dc * ((l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 - s0)),
         -1, 1
@@ -80,7 +69,7 @@ def bite_time_constraint(needle_vars, *args):
 #2.1) SW = SWITCHING TIME constraint --> possible needle grasping
 def switching_time_constraint_1(needle_vars, *args):
     s0, l0, dc = needle_vars
-    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+    gamma, lio, ww, lambda_weights, an = args
 
     alpha_1 = np.arcsin(np.clip(
         2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
@@ -97,7 +86,7 @@ def switching_time_constraint_1(needle_vars, *args):
 #2.2) SW = SWITCHING TIME constraint --> the needle passes externally to the wound
 def switching_time_constraint_2(needle_vars, *args):
     s0, l0, dc = needle_vars
-    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+    gamma, lio, ww, lambda_weights, an = args
 
     alpha_1 = np.arcsin(np.clip(
         2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
@@ -114,7 +103,7 @@ def switching_time_constraint_2(needle_vars, *args):
 #2.3) SW = SWITCHING TIME constraint --> the needle must be inside the tissue
 def switching_time_constraint_3(needle_vars, *args):
     s0, l0, dc = needle_vars
-    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+    gamma, lio, ww, lambda_weights, an = args
 
     dh_coord = -dc/2 +l0 -t*np.sin((np.pi-gamma)/2)
 
@@ -123,7 +112,7 @@ def switching_time_constraint_3(needle_vars, *args):
 #2.4) SW = SWITCHING TIME constraint --> the needle enters from one side (it doesn't work now)
 def switching_time_constraint_4(needle_vars, *args):
     s0, l0, dc = needle_vars
-    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+    gamma, lio, ww, lambda_weights, an = args
 
     alpha_2 = np.arcsin(np.clip(
         2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 - s0)),
@@ -138,7 +127,7 @@ def switching_time_constraint_4(needle_vars, *args):
 #2.5) SW = SWITCHING TIME constraint --> the needle exits from the other side (it doesn't work now)
 def switching_time_constraint_5(needle_vars, *args):
     s0, l0, dc = needle_vars
-    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+    gamma, lio, ww, lambda_weights, an = args
 
     alpha_1 = np.arcsin(np.clip(
         2 * np.sin(gamma/2) / dc * ((l0 - np.tan((np.pi - gamma)/2)) * (lio/2 + s0)),
@@ -153,7 +142,7 @@ def switching_time_constraint_5(needle_vars, *args):
 #3) ET = EXTRACTION TIME
 def extraction_time_constraint(needle_vars, *args):
     s0, l0, dc = needle_vars
-    gamma, lio, ww, lambda_weights, an, delta_min, delta_max = args
+    gamma, lio, ww, lambda_weights, an = args
 
     alpha_1 = np.arcsin(np.clip(
         2 * np.sin(gamma / 2) / dc * ((l0 - np.tan((np.pi - gamma) / 2)) * (lio / 2 + s0)),
@@ -169,25 +158,25 @@ def extraction_time_constraint(needle_vars, *args):
     return py - t * np.sin((np.pi - gamma) / 2) - hti
 
 
-def cost_function_brute(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max):
+def cost_function_brute(needle_vars, gamma, lio, ww, lambda_weights, an):
 
     # constraints verification giving infinite value to cost function out of constraints
-    if not bite_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+    if not bite_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
-    if not switching_time_constraint_1(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+    if not switching_time_constraint_1(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
-    if not switching_time_constraint_2(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+    if not switching_time_constraint_2(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
-    if not switching_time_constraint_3(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+    if not switching_time_constraint_3(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
-    if not switching_time_constraint_4(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+    if not switching_time_constraint_4(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
-    if not switching_time_constraint_5(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+    if not switching_time_constraint_5(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
-    if not extraction_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max) >= 0:
+    if not extraction_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
 
-    return cost_function(needle_vars, gamma, lio, ww, lambda_weights, an, delta_min, delta_max)
+    return cost_function(needle_vars, gamma, lio, ww, lambda_weights, an)
 
 # Feasible ranges
 ranges = [
@@ -207,7 +196,7 @@ for an in an_values:
     result = brute(
         cost_function_brute,
         ranges=ranges,
-        args=(gamma, lio, ww, lambda_weights, an, delta_min, delta_max),
+        args=(gamma, lio, ww, lambda_weights, an),
         full_output=True,
         finish= fmin,
         Ns=Ns,
@@ -220,7 +209,6 @@ for an in an_values:
     if min_cost < best_cost:
         best_cost = min_cost
         best_solution = (min_vars, an)
-
 
 if best_solution: #The best solution among the an values
     
@@ -280,8 +268,7 @@ if best_solution: #The best solution among the an values
                     dc = DC[i, j, k]
                     cost = cost_function_brute(
                         (s0, l0, dc), 
-                        gamma, lio, ww, lambda_weights, an, delta_min, delta_max
-                        )
+                        gamma, lio, ww, lambda_weights, an)
                     Costs[i, j, k] = cost if np.isfinite(cost) else np.nan
                     #print(f"Processing an={an}, idx={idx}, s0={s0}, l0={l0}, dc={dc}, cost={cost}")
        
@@ -293,47 +280,3 @@ if best_solution: #The best solution among the an values
 
 else:
     print("The brute force optimization did not find a valid solution.")
-
-## -- NEEDLE PLOTTING
-
-fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-axes = axes.flatten()
-
-# Optimal solution for each needle shape
-for idx, (min_cost, min_vars, an) in enumerate(optimal_solutions):
-    ax = axes[idx] 
-    optimal_s0, optimal_l0, optimal_dc = min_vars
-
-    # arc length computation
-    offset = np.pi/2 - np.pi*an
-    theta = np.linspace(np.pi + offset, 2 * np.pi - offset, 100)
-    x_circle = optimal_dc / 2 * np.cos(theta) + optimal_s0
-    y_circle = optimal_dc / 2 * np.sin(theta) + optimal_l0
-    # Needle center point
-    ax.plot(x_circle, y_circle, label=f'an={an:.2f}, dc={optimal_dc:.2f}')
-    ax.plot(optimal_s0, optimal_l0, 'ro', label=f'Optimal needle center (s0={optimal_s0:.2f}, l0={optimal_l0:.2f})')
-    # Ideal suture points
-    ideal_points_x = [lio / 2, -lio / 2]
-    ideal_points_y = [0, 0]
-    ax.plot(ideal_points_x, ideal_points_y, 'go', label='Desired Points (±lio/2)', markersize=4)
-    # Vessel geometry
-    ax.plot([ww / 2, ww / 2], [(lio / 2 - ww / 2) * np.tan((np.pi - gamma) / 2), -1.5 * lio], 'k')
-    ax.plot([-ww / 2, -ww / 2], [(lio / 2 - ww / 2) * np.tan((np.pi - gamma) / 2), -1.5 * lio], 'k')
-    Eo = [-ww / 2, (lio / 2 - ww / 2) * np.tan((np.pi - gamma) / 2)]
-    Ei = [ww / 2, (lio / 2 - ww / 2) * np.tan((np.pi - gamma) / 2)]
-    Oa = [-2 * lio, -1.5 * lio * np.tan((np.pi - gamma) / 2)]
-    Ia = [2 * lio, -1.5 * lio * np.tan((np.pi - gamma) / 2)]
-    ax.plot([Oa[0], Eo[0]], [Oa[1], Eo[1]], 'k')
-    ax.plot([Ia[0], Ei[0]], [Ia[1], Ei[1]], 'k')
-
-    ax.axhline(0, color='black', linewidth=0.8, linestyle='--')
-    ax.axvline(0, color='black', linewidth=0.8, linestyle='--')
-    ax.set_xlabel('s0 (x coordinate)', fontsize=10)
-    ax.set_ylabel('l0 (y coordinate)', fontsize=10)
-    ax.set_aspect('equal', adjustable='box')
-    ax.set_title(f'Optimal Needle Geometry for an={an:.2f}', fontsize=12)
-    ax.legend(fontsize=8)
-    ax.grid(True)
-
-plt.subplots_adjust(hspace=0.3, wspace=0.5)
-plt.show()
