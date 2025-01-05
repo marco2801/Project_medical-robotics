@@ -20,7 +20,7 @@ delta_min = [0, 0, 0, 0, 0, 0]  # least feasible value for the errors between ac
 delta_max = [np.pi/2, 38.5, 38.5-lio/2, lio, np.pi/2, 38.5]  # highest possible errors
 
 # t = distance between desired entry (Id) and input edge of wound (Ei) -- constant
-t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2))
+t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2)) # = 5.52mm
 
 # COST FUNCTION (without constraints)
 def cost_function(needle_vars, *args):
@@ -161,7 +161,7 @@ def extraction_time_constraint(needle_vars, *args):
     ))
     eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
     py = (
-       np.sin(2 * np.pi * an) * (-ww / 2 - (t - eout) * np.cos((np.pi - gamma) / 2) - s0)
+       -np.sin(2 * np.pi * an) * (-ww / 2 - (t - eout) * np.cos((np.pi - gamma) / 2) - s0)
         + np.cos(2 * np.pi * an) * (eout * np.sin((np.pi - gamma) / 2) - l0)
         + l0
     )
@@ -200,6 +200,7 @@ Ns = 20  # grid resolution
 
 best_solution = None
 best_cost = float('inf')
+optimal_solutions = []
 
 for an in an_values:
 
@@ -214,13 +215,15 @@ for an in an_values:
     )
 
     min_cost, min_vars = result[1], result[0]
+    optimal_solutions.append((min_cost, min_vars, an))
 
     if min_cost < best_cost:
         best_cost = min_cost
         best_solution = (min_vars, an)
 
 
-if best_solution:
+if best_solution: #The best solution among the an values
+    
     optimal_vars, optimal_an = best_solution
 
     optimal_s0 = optimal_vars[0]
@@ -251,12 +254,11 @@ if best_solution:
           f"alpha_2 = {alpha_2_best:.2f}, lg = {lg_best:.2f}")
 
     # mesh grid
-    s0_vals = np.linspace(-lio / 2, lio / 2, 50)  
-    l0_vals = np.linspace(0, 2*lio, 50)            
-    dc_vals = np.linspace(10, 77, 50)     
+    s0_vals = np.linspace(-lio / 2, lio / 2, 30)  
+    l0_vals = np.linspace(0, 2*lio, 30)            
+    dc_vals = np.linspace(10, 77, 30)     
 
-    # VISUALIZATION
-
+    # VISUALIZATION of cost functions
     fig = plt.figure(figsize=(16, 12))
 
     for idx, an in enumerate(an_values):
@@ -264,7 +266,7 @@ if best_solution:
         S0, L0, DC = np.meshgrid(s0_vals, l0_vals, dc_vals)
         
         ax = fig.add_subplot(2, 2, idx+1, projection='3d')
-        ax.set_title(f"Cost Landscape for an={an:.2f}")
+        ax.set_title(f"Cost function values (an={an:.2f})")
         ax.set_xlabel('s0')
         ax.set_ylabel('l0')
         ax.set_zlabel('dc')
@@ -292,71 +294,46 @@ if best_solution:
 else:
     print("The brute force optimization did not find a valid solution.")
 
-##% NEEDLE PLOTTING (MUST BE CORRECTED)
+## -- NEEDLE PLOTTING
 
-# rear of the needle (Q)
-#qx_best = (
-#        np.cos(2 * np.pi * optimal_an) * (ww / 2 + (t - ein_best) * np.cos((np.pi - gamma) / 2) - optimal_s0)
-#        - np.sin(2 * np.pi * optimal_an) * (ein_best * np.sin((np.pi - gamma) / 2) - optimal_l0)
-#        + optimal_s0
-#)
-#qy_best = (
-#        np.sin(2 * np.pi * optimal_an) * (ww / 2 + (t - ein_best) * np.cos((np.pi - gamma) / 2) - optimal_s0)
-#        + np.cos(2 * np.pi * optimal_an) * (ein_best * np.sin((np.pi - gamma) / 2) - optimal_l0)
-#        + optimal_l0
-#)
+fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+axes = axes.flatten()
 
-#tip of the needle (P)
-#px_best = (
-#        np.cos(2 * np.pi * optimal_an) * (-ww / 2 - (t - eout_best) * np.cos((np.pi - gamma) / 2) - optimal_s0)
-#        - np.sin(2 * np.pi * optimal_an) * (eout_best * np.sin((np.pi - gamma) / 2) - optimal_l0)
-#        + optimal_s0
-#)
-#py_best = (
-#        np.sin(2 * np.pi * optimal_an) * (-ww / 2 - (t - eout_best) * np.cos((np.pi - gamma) / 2) - optimal_s0)
-#        + np.cos(2 * np.pi * optimal_an) * (eout_best * np.sin((np.pi - gamma) / 2) - optimal_l0)
-#        + optimal_l0
-#)
+# Optimal solution for each needle shape
+for idx, (min_cost, min_vars, an) in enumerate(optimal_solutions):
+    ax = axes[idx] 
+    optimal_s0, optimal_l0, optimal_dc = min_vars
 
-radius = optimal_dc / 2
-#theta_start = np.arctan2(py_best-optimal_l0,px_best-optimal_s0)
-#theta_end = np.arctan2(qy_best-optimal_l0,qx_best-optimal_s0)
-#theta = np.linspace(theta_start, theta_end, 100)  # Lower half of the circle
+    # arc length computation
+    offset = np.pi/2 - np.pi*an
+    theta = np.linspace(np.pi + offset, 2 * np.pi - offset, 100)
+    x_circle = optimal_dc / 2 * np.cos(theta) + optimal_s0
+    y_circle = optimal_dc / 2 * np.sin(theta) + optimal_l0
+    # Needle center point
+    ax.plot(x_circle, y_circle, label=f'an={an:.2f}, dc={optimal_dc:.2f}')
+    ax.plot(optimal_s0, optimal_l0, 'ro', label=f'Optimal needle center (s0={optimal_s0:.2f}, l0={optimal_l0:.2f})')
+    # Ideal suture points
+    ideal_points_x = [lio / 2, -lio / 2]
+    ideal_points_y = [0, 0]
+    ax.plot(ideal_points_x, ideal_points_y, 'go', label='Desired Points (±lio/2)', markersize=4)
+    # Vessel geometry
+    ax.plot([ww / 2, ww / 2], [(lio / 2 - ww / 2) * np.tan((np.pi - gamma) / 2), -1.5 * lio], 'k')
+    ax.plot([-ww / 2, -ww / 2], [(lio / 2 - ww / 2) * np.tan((np.pi - gamma) / 2), -1.5 * lio], 'k')
+    Eo = [-ww / 2, (lio / 2 - ww / 2) * np.tan((np.pi - gamma) / 2)]
+    Ei = [ww / 2, (lio / 2 - ww / 2) * np.tan((np.pi - gamma) / 2)]
+    Oa = [-2 * lio, -1.5 * lio * np.tan((np.pi - gamma) / 2)]
+    Ia = [2 * lio, -1.5 * lio * np.tan((np.pi - gamma) / 2)]
+    ax.plot([Oa[0], Eo[0]], [Oa[1], Eo[1]], 'k')
+    ax.plot([Ia[0], Ei[0]], [Ia[1], Ei[1]], 'k')
 
-fig, ax = plt.subplots(figsize=(10, 8))
+    ax.axhline(0, color='black', linewidth=0.8, linestyle='--')
+    ax.axvline(0, color='black', linewidth=0.8, linestyle='--')
+    ax.set_xlabel('s0 (x coordinate)', fontsize=10)
+    ax.set_ylabel('l0 (y coordinate)', fontsize=10)
+    ax.set_aspect('equal', adjustable='box')
+    ax.set_title(f'Optimal Needle Geometry for an={an:.2f}', fontsize=12)
+    ax.legend(fontsize=8)
+    ax.grid(True)
 
-theta = np.linspace(np.pi, 2*np.pi, 100)  # not correct
-x_circle = radius * np.cos(theta) + optimal_s0
-y_circle = radius * np.sin(theta) + optimal_l0 
-ax.plot(x_circle, y_circle, label=f'Needle Geometry (an={optimal_an:.2f}, dc={optimal_dc:.2f})')
-
-ax.plot(optimal_s0, optimal_l0, 'ro', label=f'Optimal Point (s0={optimal_s0:.2f}, l0={optimal_l0:.2f})')
-#ax.plot(px_best,py_best,'bo',label=f'Tip of the needle')
-#ax.plot(qx_best,qy_best,'ko',label=f'Rear of the needle')
-ideal_points = [lio / 2, -lio / 2]
-ax.plot(ideal_points, [0, 0], 'go', label=f'Desired Points (±lio/2)', markersize=5)
-
-# vessel geometry
-ax.plot([ww / 2, ww / 2], [(lio/2-ww/2)*np.tan((np.pi-gamma)/2), -2 * lio], 'k')
-ax.plot([-ww / 2, -ww / 2], [(lio/2-ww/2)*np.tan((np.pi-gamma)/2), -2 * lio], 'k')
-Eo = [-ww/2, (lio/2-ww/2)*np.tan((np.pi-gamma)/2)]
-Ei = [ww/2, (lio/2-ww/2)*np.tan((np.pi-gamma)/2)]
-Oa = [-2.5*lio,-2*lio*np.tan((np.pi-gamma)/2)]
-Ia = [2.5*lio,-2  *lio*np.tan((np.pi-gamma)/2)]
-ax.plot([Oa[0], Eo[0]], [Oa[1], Eo[1]], 'k')
-ax.plot([Ia[0], Ei[0]], [Ia[1], Ei[1]], 'k')
-
-ax.set_xlabel('s0 (x coordinate)', fontsize=12)
-ax.set_ylabel('l0 (y coordinate)', fontsize=12)
-ax.set_title('Optimal Needle Geometry and Desired Points', fontsize=14)
-ax.axhline(0, color='black', linewidth=0.8, linestyle='--')  # Reference line
-ax.axvline(0, color='black', linewidth=0.8, linestyle='--')
-ax.legend()
-ax.grid(True)
-
-# Adjust axis limits for better visibility
-ax.set_xlim([-1.2*radius, 1.2*radius])
-ax.set_ylim([-2 * lio, lio])
-
-# Show the plot
+plt.subplots_adjust(hspace=0.3, wspace=0.5)
 plt.show()
