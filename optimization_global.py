@@ -336,7 +336,7 @@ for idx, (min_cost, min_vars, an) in enumerate(optimal_solutions):
     ax.set_ylabel('l0 (y coordinate)', fontsize=10)
     ax.set_aspect('equal', adjustable='box')
     ax.set_title(f'Optimal Needle Geometry for an={an:.2f}', fontsize=12)
-    ax.legend(fontsize=8)
+    ax.legend(fontsize=8,loc='lower left')
     ax.grid(True)
 
 plt.subplots_adjust(hspace=0.3, wspace=0.5)
