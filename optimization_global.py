@@ -4,6 +4,7 @@ from scipy.optimize import fmin
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import time
 
 # input costants (geoemtric parameters of the suture)
 lio = 16 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
@@ -196,11 +197,13 @@ ranges = [
     (10, 77)              # dc
 ]
 
-Ns = 20  # grid resolution
-
 best_solution = None
 best_cost = float('inf')
 optimal_solutions = []
+
+# Time solution computation
+Ns = 30  # grid resolution
+start_time = time.time()
 
 for an in an_values:
 
@@ -209,7 +212,7 @@ for an in an_values:
         ranges=ranges,
         args=(gamma, lio, ww, lambda_weights, an, delta_min, delta_max),
         full_output=True,
-        finish= fmin,
+        finish= None,
         Ns=Ns,
         disp = True
     )
@@ -221,6 +224,7 @@ for an in an_values:
         best_cost = min_cost
         best_solution = (min_vars, an)
 
+end_time = time.time()
 
 if best_solution: #The best solution among the an values
     
@@ -247,11 +251,11 @@ if best_solution: #The best solution among the an values
     sn_best = abs(optimal_s0)
     lg_best = (np.pi*optimal_an*optimal_dc - optimal_dc/2*(gamma-alpha_1_best-alpha_2_best))/2
     
-    print(f"Optimal solution found using brute force: Cost function value C = {best_cost}, s0={optimal_s0:.2f}, "
-          f"l0={optimal_l0:.2f}, dc={optimal_dc:.2f}, an={optimal_an:.2f}")
+    print(f"Optimal solution found using brute force: Cost function value C = {best_cost:.4f}, s0={optimal_s0:.1f}, "
+          f"l0={optimal_l0:.1f}, dc={optimal_dc:.1f}, an={optimal_an:.2f}")
     print(f"Optimal values of suture parameters: beta_in = {beta_in_best:.2f}, beta_out = {beta_out_best:.2f}, e_in = {ein_best:.2f}, "
-          f"e_out = {eout_best:.2f}, sn = {sn_best:.2f}, dh = {dh_best:.2f}, alpha_1 = {alpha_1_best:.2f}, "
-          f"alpha_2 = {alpha_2_best:.2f}, lg = {lg_best:.2f}")
+          f"e_out = {eout_best:.2f}, sn = {sn_best:.1f}, dh = {dh_best:.1f}, alpha_1 = {alpha_1_best:.2f}, "
+          f"alpha_2 = {alpha_2_best:.2f}, lg = {lg_best:.1f}")
 
     # mesh grid
     s0_vals = np.linspace(-lio / 2, lio / 2, 30)  
@@ -310,8 +314,8 @@ for idx, (min_cost, min_vars, an) in enumerate(optimal_solutions):
     x_circle = optimal_dc / 2 * np.cos(theta) + optimal_s0
     y_circle = optimal_dc / 2 * np.sin(theta) + optimal_l0
     # Needle center point
-    ax.plot(x_circle, y_circle, label=f'an={an:.2f}, dc={optimal_dc:.2f}')
-    ax.plot(optimal_s0, optimal_l0, 'ro', label=f'Optimal needle center (s0={optimal_s0:.2f}, l0={optimal_l0:.2f})')
+    ax.plot(x_circle, y_circle, label=f'an={an:.2f}, dc={optimal_dc:.1f}')
+    ax.plot(optimal_s0, optimal_l0, 'ro', label=f'Optimal needle center (s0={optimal_s0:.1f}, l0={optimal_l0:.1f})')
     # Ideal suture points
     ideal_points_x = [lio / 2, -lio / 2]
     ideal_points_y = [0, 0]
@@ -337,3 +341,6 @@ for idx, (min_cost, min_vars, an) in enumerate(optimal_solutions):
 
 plt.subplots_adjust(hspace=0.3, wspace=0.5)
 plt.show()
+
+# Requested time
+print(f"Time taken for Ns={Ns}: {end_time - start_time:.2f} seconds")
