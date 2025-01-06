@@ -17,37 +17,6 @@ an_values = [1/4, 3/8, 1/2, 5/8]  # discrete values of needle shape
 # t = distance between desired entry (Id) and input edge of wound (Ei) -- constant
 t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2)) # = 5.52mm (gamma =4pi/5, ww=5.5, lio=16)
 
-# COST FUNCTION (without constraints)
-def cost_function(needle_vars, *args):
-    s0, l0, dc = needle_vars            
-    gamma, lio, ww, lambda_weights, an = args
-
-    # Suture parameters computation
-    alpha_1 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 + s0)),
-        -1, 1
-    ))    # output angle between tissue surface and the needle center (CLIP does make sense?)
-    alpha_2 = np.arcsin(np.clip(
-        2 * np.sin(gamma/2) / dc * (l0 - np.tan((np.pi - gamma)/2) * (lio/2 - s0)),
-        -1, 1
-    ))    # input angle between tissue surface and the needle center (CLIP does make sense?)
-
-    beta_in = np.pi/2 + alpha_2 #entry angle
-    beta_out = np.pi/2 + alpha_1 #exit angle
-
-    dh = abs(-dc/2 + l0 - t * np.sin((np.pi-gamma)/2))     #suture depth [mm]
-    sn = abs(s0)    # simmetry [mm]
-
-    ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))  # entry distance actual-desired [mm]
-    eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2)) # exit distance actual-desired [mm]
-
-    #DELTA: actual values minus the ideal ones --> [mm] or [rad]
-    terms = [beta_in - np.pi / 2, ein, dh - lio / 2, sn, beta_out - np.pi / 2, eout] 
-    weighted_terms = [
-        lambda_weights[i] * abs(terms[i]) for i in range(len(terms))
-    ]
-    return sum(weighted_terms)
-
 ## CONSTRAINTS DEFINITION
 
 #1) BT = BITE TIME
@@ -159,8 +128,7 @@ def extraction_time_constraint(needle_vars, *args):
 
 # Constraints application
 def cost_function_brute(needle_vars, gamma, lio, ww, lambda_weights, an):
-
-    # constraints verification giving infinite value to cost function out of constraints
+    # Verifica dei vincoli
     if not bite_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
     if not switching_time_constraint_1(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
@@ -176,7 +144,31 @@ def cost_function_brute(needle_vars, gamma, lio, ww, lambda_weights, an):
     if not extraction_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
 
-    return cost_function(needle_vars, gamma, lio, ww, lambda_weights, an)
+    # Calcolo dei termini
+    s0, l0, dc = needle_vars
+    alpha_1 = np.arcsin(np.clip(
+        2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2) * (lio / 2 + s0)),
+        -1, 1
+    ))
+    alpha_2 = np.arcsin(np.clip(
+        2 * np.sin(gamma / 2) / dc * (l0 - np.tan((np.pi - gamma) / 2) * (lio / 2 - s0)),
+        -1, 1
+    ))
+    beta_in = np.pi / 2 + alpha_2
+    beta_out = np.pi / 2 + alpha_1
+    dh = abs(-dc / 2 + l0 - ww * np.sin((np.pi - gamma) / 2))
+    sn = abs(s0)
+    ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))
+    eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
+
+    terms = [beta_in - np.pi / 2, ein, dh - lio / 2, sn, beta_out - np.pi / 2, eout]
+
+    valid_terms.append(terms)
+
+    weighted_terms = [
+        lambda_weights[i] * abs(terms[i]) for i in range(len(terms))
+    ]
+    return sum(weighted_terms)
 
 # Feasible ranges
 ranges = [
@@ -190,6 +182,7 @@ Ns = 30  # grid resolution
 best_solution = None
 best_cost = float('inf')
 optimal_solutions = []
+valid_terms =[]
 
 for an in an_values:
 
@@ -209,6 +202,17 @@ for an in an_values:
     if min_cost < best_cost:
         best_cost = min_cost
         best_solution = (min_vars, an)
+
+if valid_terms:
+    valid_terms_array = np.array(valid_terms)
+    max_delta = np.abs(np.max(valid_terms_array, axis=0))
+    min_delta = np.abs(np.min(valid_terms_array, axis=0))
+    print("Maximum and minimum values of DELTA terms:")
+    for i, (max_val, min_val) in enumerate(zip(max_delta, min_delta)):
+        print(f"terms[{i}]: Max = {max_val:.2f}, Min = {min_val:.2f}")
+    # beta_in, e_in, dh, sn, beta_out, e_out
+else:
+    print("Nessuna soluzione valida trovata.")
 
 if best_solution: #The best solution among the an values
     
