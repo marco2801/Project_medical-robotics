@@ -7,11 +7,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import time
 
 # input costants (geoemtric parameters of the suture)
-lio = 16 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
-ww = 5.5  # wound width, space between vessel (mm)
+lio = 14 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
+ww = 4.5  # wound width, space between vessel (mm)
 lins = 10  # minimum grasping needle length (mm)
 hti = 8  # Input to stop unwanted needle-tissue contact at the end of the suture (mm)
-gamma = np.pi*4/5 # angle between vessels
+gamma = np.pi # angle between vessels
 lambda_weights = [1, 1, 1, 1, 1, 1]  # weights for suture parameters (tunable)
 an_values = [1/4, 3/8, 1/2, 5/8]  # discrete values of needle shape
 
@@ -94,10 +94,10 @@ def switching_time_constraint_4(needle_vars, *args):
         -1, 1
     ))
     ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))
-    Id_Ei = [t*np.cos(np.pi-((np.pi-gamma)/2)),t*np.sin(np.pi-((np.pi-gamma)/2))]
-    Id_Ia = [ein*np.cos(np.pi-(np.pi-gamma)/2),ein*np.sin(np.pi-(np.pi-gamma)/2)]
+    Id_Ei = [t*np.cos(np.pi-((np.pi-gamma)/2)), t*np.sin(np.pi-((np.pi-gamma)/2))]
+    Id_Ia = [ein*np.cos(np.pi-(np.pi-gamma)/2), ein*np.sin(np.pi-(np.pi-gamma)/2)]
 
-    return 1 #- np.inner(Id_Ia,Id_Ei)/t**2
+    return 1 - np.inner(Id_Ia,Id_Ei)/t**2
 #2.5) SW = SWITCHING TIME constraint --> the needle exits from the other side (it doesn't work now)
 def switching_time_constraint_5(needle_vars, *args):
     s0, l0, dc = needle_vars
@@ -109,9 +109,9 @@ def switching_time_constraint_5(needle_vars, *args):
     ))
     eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
     Od_Eo = [t*np.cos((np.pi-gamma)/2), t*np.sin((np.pi-gamma)/2)]
-    Od_Oa = [eout*np.cos(np.pi-((np.pi-gamma)/2)), eout*np.sin(np.pi-((np.pi-gamma)/2))]
+    Od_Oa = [eout*np.cos((np.pi-gamma)/2), eout*np.sin((np.pi-gamma)/2)]
 
-    return 1 #- np.inner(Od_Oa,Od_Eo)/t**2
+    return 1 - np.inner(Od_Oa,Od_Eo)/t**2
 #3) ET = EXTRACTION TIME
 def extraction_time_constraint(needle_vars, *args):
     s0, l0, dc = needle_vars
