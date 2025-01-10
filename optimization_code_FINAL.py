@@ -5,7 +5,8 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import time
-
+import matplotlib
+print(matplotlib.__version__)
 # input costants (geoemtric parameters of the suture)
 lio = 14 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
 ww = 4.5  # wound width, space between vessel (mm)

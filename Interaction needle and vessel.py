@@ -72,7 +72,7 @@ vessel1 = p.loadSoftBody(
 )
 
 vessel2=p.loadSoftBody(VESSEL_OBJ, simFileName=VESSEL_VTK, basePosition=[-vessel_outer_radius, 2*vessel_length+0.05, 0], baseOrientation=p.getQuaternionFromEuler([ np.pi/2,0, 0]),
-                       scale=0.1, mass=4, useNeoHookean=1, NeoHookeanMu=5000, NeoHookeanLambda=1000, NeoHookeanDamping=0.01, useSelfCollision=1, frictionCoeff=0.5, collisionMargin=0.01)
+                   scale=0.1, mass=4, useNeoHookean=1, NeoHookeanMu=5000, NeoHookeanLambda=1000, NeoHookeanDamping=0.01, useSelfCollision=1, frictionCoeff=0.5, collisionMargin=0.01)
 
 
 # Slider per controllare velocità di rotazione e configurazione della telecamera
