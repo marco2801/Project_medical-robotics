@@ -8,13 +8,14 @@ import time
 import matplotlib
 print(matplotlib.__version__)
 # input costants (geoemtric parameters of the suture)
-lio = 14 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
-ww = 4.5  # wound width, space between vessel (mm)
+lio = 15 # length between actual and desired entry/exit points (mm) -- 3 times ww in the paper
+ww = 5  # wound width, space between vessel (mm)
 lins = 10  # minimum grasping needle length (mm)
 hti = 8  # Input to stop unwanted needle-tissue contact at the end of the suture (mm)
 gamma = np.pi # angle between vessels
-lambda_weights = [1, 1, 1, 1, 1, 1]  # weights for suture parameters (tunable)
+lambda_weights = [0.3, 0.15, 0.05, 0.05, 0.3, 0.15]  # weights for suture parameters (tunable)
 an_values = [1/4, 3/8, 1/2, 5/8]  # discrete values of needle shape
+max_dh = 8 #take into account the vessels' size
 
 # t = distance between desired entry (Id) and input edge of wound (Ei) -- constant
 t = (lio - ww) / (2 * np.cos((np.pi - gamma) / 2)) # = 5.52mm (gamma =4pi/5, ww=5.5, lio=16)
@@ -130,6 +131,14 @@ def extraction_time_constraint(needle_vars, *args):
     )
 
     return py - t * np.sin((np.pi - gamma) / 2) - hti
+#4) needle depth
+def needle_depth(needle_vars, *args):
+    s0, l0, dc = needle_vars
+    gamma, lio, ww, lambda_weights, an = args
+
+    dh = abs(-dc / 2 + l0 - t * np.sin((np.pi - gamma) / 2))
+
+    return max_dh-dh
 
 # DELTA MAX AND MIN EVALUATION WITHIN THE FEASIBLE SET
 def feasible_set_computation(needle_vars, gamma, lio, ww, lambda_weights, an):
@@ -147,6 +156,8 @@ def feasible_set_computation(needle_vars, gamma, lio, ww, lambda_weights, an):
     if not switching_time_constraint_5(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
     if not extraction_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
+        return np.inf
+    if not needle_depth(needle_vars, gamma, lio, ww, lambda_weights, an) >=0:
         return np.inf
 
     # not normalized cost function
@@ -167,7 +178,7 @@ def feasible_set_computation(needle_vars, gamma, lio, ww, lambda_weights, an):
     eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
 
     # extraction of feasible DELTA
-    terms = [beta_in - np.pi / 2, ein, dh - lio / 2, sn, beta_out - np.pi / 2, eout]
+    terms = [beta_in - np.pi / 2, ein, dh - ww, sn, beta_out - np.pi / 2, eout]
     feasible_terms.append(terms)
 
     weighted_terms = [
@@ -177,7 +188,7 @@ def feasible_set_computation(needle_vars, gamma, lio, ww, lambda_weights, an):
     return sum(weighted_terms)
 
 # At this stage it's not important the optimal solution, we simply evaluate the values of the function in the ranges (tunable)
-Ns = 30  # grid resolution
+Ns = 40  # grid resolution
 for an in an_values:
 
     result = brute(
@@ -218,7 +229,9 @@ def cost_function_brute(needle_vars, gamma, lio, ww, lambda_weights, an, delta_m
         return np.inf
     if not extraction_time_constraint(needle_vars, gamma, lio, ww, lambda_weights, an) >= 0:
         return np.inf
-
+    if not needle_depth(needle_vars, gamma, lio, ww, lambda_weights, an) >=0:
+        return np.inf
+    
     # Calcolo dei termini
     s0, l0, dc = needle_vars
     alpha_1 = np.arcsin(np.clip(
@@ -236,7 +249,7 @@ def cost_function_brute(needle_vars, gamma, lio, ww, lambda_weights, an, delta_m
     ein = (-dc / 2 * np.cos(alpha_2 + (np.pi - gamma) / 2) + lio / 2 - s0) / (np.cos((np.pi - gamma) / 2))
     eout = (-dc / 2 * np.cos(alpha_1 + (np.pi - gamma) / 2) + lio / 2 + s0) / (np.cos((np.pi - gamma) / 2))
 
-    terms = [beta_in - np.pi / 2, ein, dh - lio / 2, sn, beta_out - np.pi / 2, eout]
+    terms = [beta_in - np.pi / 2, ein, dh - ww, sn, beta_out - np.pi / 2, eout]
 
     normalized_terms = [
         (abs(terms[i]) - delta_min[i]) / (delta_max[i] - delta_min[i])
